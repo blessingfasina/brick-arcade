@@ -1,4 +1,4 @@
-/* Brick Arcade — shared engine: LCD renderer, input, sound, HUD, game loop */
+/* Retro Classic Games — shared engine: LCD renderer, input, sound, HUD, game loop */
 'use strict';
 
 const LCD_BG = '#9ead86';

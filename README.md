@@ -1,4 +1,6 @@
-# Brick Arcade
+# Retro Classic Games
+
+Live at https://retroclassic.games
 
 Six classic handheld brick games in the browser: Snake, Brick Breaker, Brick Racer, Brick Stack, Pong and Tanks.
 Plain HTML, CSS and JavaScript. No build step, no dependencies.
@@ -10,6 +12,8 @@ npx -y serve -l 3333 .
 ```
 
 Then open http://localhost:3333.
+
+SEO files: `sitemap.xml`, `robots.txt`, per-page canonical tags and JSON-LD. `vercel.json` redirects the old `.vercel.app` host and `www` to the apex domain.
 
 ## Deploy to Vercel
 

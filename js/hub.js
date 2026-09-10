@@ -1,4 +1,4 @@
-/* Brick Arcade — home page: animated mini handhelds, falling bricks, random game */
+/* Retro Classic Games — home page: animated mini handhelds, falling bricks, random game */
 'use strict';
 (() => {
   const { LCD } = window.BrickArcade;

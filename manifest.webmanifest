@@ -1,10 +1,16 @@
 {
-  "name": "Brick Arcade",
-  "short_name": "Brick Arcade",
-  "description": "Six classic handheld brick games. Free, no sign-up.",
+  "name": "Retro Classic Games",
+  "short_name": "Retro Games",
+  "description": "Six free retro games from the brick handheld: Snake, Brick Breaker, racing, falling blocks, Pong and Tanks.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0e1013",
   "theme_color": "#0e1013",
-  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
 }

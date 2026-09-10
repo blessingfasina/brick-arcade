@@ -1,4 +1,4 @@
-/* Brick Arcade — styles */
+/* Retro Classic Games — styles */
 :root {
   --bg: #0e1013;
   --plastic: #ebe7de;
@@ -48,17 +48,13 @@ a { color: inherit; }
   font-family: var(--pixel); font-size: clamp(26px, 8vw, 62px); line-height: 1.25; margin: 0 0 18px;
   display: flex; flex-direction: column; align-items: center; gap: 4px;
 }
-.hero__title .word { display: inline-flex; gap: 0.18em; }
+.hero__title .word { display: inline-flex; gap: 0.14em; }
+.hero__title .word:nth-child(3) { font-size: 0.55em; letter-spacing: 0.1em; margin-top: 0.3em; }
 .hero__title .l {
   display: inline-block; color: var(--c, #fff);
   text-shadow: 0.06em 0.06em 0 #1a0b3d, 0 0 18px currentColor;
   animation: bounce 1.8s ease-in-out infinite; animation-delay: calc(var(--i) * 0.09s);
 }
-.l:nth-child(1) { --c: #ff5fb0; --i: 0; } .l:nth-child(2) { --c: #ffd400; --i: 1; } .l:nth-child(3) { --c: #7dff5a; --i: 2; }
-.l:nth-child(4) { --c: #3ee9ff; --i: 3; } .l:nth-child(5) { --c: #ff8a2a; --i: 4; } .l:nth-child(6) { --c: #a259ff; --i: 5; }
-.word:nth-child(2) .l:nth-child(1) { --c: #3ee9ff; --i: 6; } .word:nth-child(2) .l:nth-child(2) { --c: #ff5fb0; --i: 7; }
-.word:nth-child(2) .l:nth-child(3) { --c: #ffd400; --i: 8; } .word:nth-child(2) .l:nth-child(4) { --c: #7dff5a; --i: 9; }
-.word:nth-child(2) .l:nth-child(5) { --c: #ff8a2a; --i: 10; } .word:nth-child(2) .l:nth-child(6) { --c: #a259ff; --i: 11; }
 @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-0.18em); } }
 .hero__tag { color: #d9d3ee; margin: 0 auto 22px; font-size: clamp(15px, 2.4vw, 18px); line-height: 1.6; max-width: 46ch; }
 .hero__cta { display: flex; flex-direction: column; align-items: center; gap: 14px; }
@@ -107,6 +103,16 @@ a { color: inherit; }
 @media (prefers-reduced-motion: reduce) {
   .marquee__track, .hero__title .l, .blink { animation: none; }
 }
+
+
+/* ---------- Game page: how to play ---------- */
+.about { max-width: 640px; margin: 0 auto; padding: 8px 20px 48px; color: #cfd3d8; font-size: 15px; line-height: 1.7; }
+.about h2 { font-family: var(--pixel); font-size: 11px; color: var(--lcd); margin: 32px 0 12px; line-height: 1.6; }
+.about ol { padding-left: 22px; margin: 0; }
+.about li { margin-bottom: 8px; }
+.about p { margin: 0 0 14px; }
+.about a { color: #3ee9ff; }
+.about__more { font-size: 13px; color: #9aa0a6; }
 
 /* ---------- Console ---------- */
 .console {
