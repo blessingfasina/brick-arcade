@@ -38,6 +38,18 @@
       </table>
     </div>
 
+    <h2 class="scores__h2">🌍 WORLD LEADERBOARD</h2>
+    <p class="scores__name">You play as <b data-name>—</b>. <button type="button" class="linkbtn" data-set-name>Change name</button></p>
+    <div class="tabs" data-game-tabs></div>
+    <div class="tabs tabs--mode"><button type="button" class="tab is-on" data-mode="alltime">ALL TIME</button><button type="button" class="tab" data-mode="daily">TODAY</button></div>
+    <div class="table-wrap">
+      <table class="scores scores--world">
+        <thead><tr><th>#</th><th>PLAYER</th><th class="num">SCORE</th></tr></thead>
+        <tbody data-world-rows><tr><td colspan="3" class="muted">Loading…</td></tr></tbody>
+      </table>
+    </div>
+    <p class="scores__rank" data-world-rank></p>
+
     <p class="scores__foot"><button type="button" class="chip chip--dark" data-reset>RESET ALL SCORES</button></p>
   </main>
   <script src="/js/lcd.js"></script>

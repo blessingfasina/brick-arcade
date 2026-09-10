@@ -1,7 +1,7 @@
 /* Retro Classic Games — home page: animated mini handhelds, daily challenge, install, backdrop */
 'use strict';
 (() => {
-  const { LCD, GAMES, store, dailyGame, dayKey, fmt } = window.BrickArcade;
+  const { LCD, GAMES, store, dailyGame, dayKey, fmt, Leaderboard } = window.BrickArcade;
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const rand = (n) => Math.floor(Math.random() * n);
 
@@ -210,6 +210,14 @@
     };
     tickClock();
     setInterval(tickClock, 1000);
+    const world = daily.querySelector('[data-daily-world]');
+    if (world) {
+      Leaderboard.fetch(g.id, { day: dayKey(), limit: 1 }).then((r) => {
+        const top = r.daily[0];
+        world.textContent = top ? `WORLD BEST TODAY: ${fmt(top.score)} BY ${top.name}` : 'NO WORLD SCORE YET TODAY. BE FIRST.';
+        world.hidden = false;
+      }).catch(() => {});
+    }
   }
 
   /* ---------- Install as an app ---------- */

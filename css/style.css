@@ -204,6 +204,22 @@ a { color: inherit; }
 .scores .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .scores__foot { text-align: center; margin-top: 24px; }
 
+/* ---------- World leaderboard ---------- */
+.scores__h2 { font-family: var(--pixel); font-size: 12px; color: #3ee9ff; margin: 40px 0 10px; }
+.scores__name { color: #d9d3ee; font-size: 14px; margin: 0 0 14px; }
+.scores__name b { font-family: var(--pixel); font-size: 9px; color: #ffd400; }
+.linkbtn { background: none; border: 0; color: #3ee9ff; text-decoration: underline; cursor: pointer; font: inherit; padding: 0; }
+.tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.tabs--mode { margin-bottom: 12px; }
+.tab { font-family: var(--pixel); font-size: 7px; padding: 9px 10px; border-radius: 999px; border: 2px solid rgba(255, 255, 255, 0.14); background: rgba(255, 255, 255, 0.05); color: #fff; cursor: pointer; }
+.tab.is-on { background: var(--c, #ffd400); border-color: var(--c, #ffd400); color: #1a0b3d; }
+.scores--world { min-width: 0; }
+.scores--world td:first-child { font-family: var(--pixel); font-size: 8px; color: #b7aee0; width: 40px; }
+.scores tr.is-you td { background: rgba(255, 212, 0, 0.12); color: #ffd400; }
+.scores .muted { color: #9aa0a6; text-align: center; padding: 20px; }
+.scores__rank { color: #b7aee0; font-size: 13px; margin: 12px 0 0; }
+.overlay .world { display: block; font-size: 8px; color: #7a1f4f; min-height: 1em; }
+
 /* ---------- Console ---------- */
 .console {
   max-width: 430px;

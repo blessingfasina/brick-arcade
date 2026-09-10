@@ -307,6 +307,38 @@ const Stats = {
   },
 };
 
+/* ---------- World leaderboard client (talks to /api/scores; silent when unavailable) ---------- */
+const Leaderboard = {
+  id() {
+    let id = store.get('brick.pid');
+    if (!id) {
+      id = (crypto.randomUUID ? crypto.randomUUID() : Array.from({ length: 24 }, () => 'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]).join(''));
+      store.set('brick.pid', id);
+    }
+    return id;
+  },
+  name() { return store.get('brick.name', ''); },
+  setName(n) { const c = String(n || '').replace(/[^A-Za-z0-9 _.-]/g, '').trim().slice(0, 12).toUpperCase(); if (c) store.set('brick.name', c); return c; },
+  askName() {
+    const n = window.prompt('Pick a name for the world leaderboard (letters and numbers, up to 12):', Leaderboard.name());
+    return n === null ? '' : Leaderboard.setName(n);
+  },
+  async fetch(game, { day, limit = 25 } = {}) {
+    const q = new URLSearchParams({ game, id: Leaderboard.id(), limit });
+    if (day) q.set('day', day);
+    const r = await fetch(`/api/scores?${q}`, { cache: 'no-store' });
+    if (!r.ok) throw new Error(String(r.status));
+    return r.json();
+  },
+  async submit({ game, score, daily, day }) {
+    const name = Leaderboard.name();
+    if (!name || !(score > 0)) return null;
+    const r = await fetch('/api/scores', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ game, score, id: Leaderboard.id(), name, daily: !!daily, day }) });
+    if (!r.ok) throw new Error(String(r.status));
+    return r.json();
+  },
+};
+
 /* ---------- Base game: loop, states, overlay, hi-score, daily, share, settings ---------- */
 class Game {
   constructor({ id, cols = 10, rows = 20, interval = 200 }) {
@@ -344,6 +376,7 @@ class Game {
     this.overlay.addEventListener('click', (e) => {
       if (e.target.closest('[data-share]')) this.share();
       else if (e.target.closest('[data-again]')) this.start();
+      else if (e.target.closest('[data-join]')) { if (Leaderboard.askName()) this.postScore(); }
     });
     this.initSettings();
     this.syncMute();
@@ -422,7 +455,23 @@ class Game {
     const line = this.newBest
       ? `<small class="best">NEW BEST!<br><s>${fmt(this.prevHi)}</s> ${fmt(this.score)}</small>`
       : `<small>SCORE ${fmt(this.score)}</small>`;
-    this.showOverlay(`GAME OVER${line}<div class="overlay__btns"><button type="button" data-share>SHARE</button><button type="button" data-again>AGAIN</button></div>`);
+    const join = this.score > 0 && !Leaderboard.name() ? '<button type="button" data-join>JOIN WORLD BOARD</button>' : '';
+    this.showOverlay(`GAME OVER${line}<small class="world" data-world></small><div class="overlay__btns"><button type="button" data-share>SHARE</button>${join}<button type="button" data-again>AGAIN</button></div>`);
+    if (this.score > 0 && Leaderboard.name()) this.postScore();
+  }
+
+  /* Send the finished score to the world board and show the rank it earned. */
+  async postScore() {
+    const slot = this.overlay.querySelector('[data-world]');
+    this.overlay.querySelector('[data-join]')?.remove();
+    if (slot) slot.textContent = 'SENDING…';
+    try {
+      const r = await Leaderboard.submit({ game: this.id, score: this.score, daily: this.daily, day: this.day });
+      if (!slot || !r) return;
+      const rank = this.daily ? r.rank.daily : r.rank.alltime;
+      slot.textContent = rank ? `WORLD #${fmt(rank)}${this.daily ? ' TODAY' : ''}` : '';
+      if (rank && rank <= 10) this.sound.best();
+    } catch (_) { if (slot) slot.textContent = ''; }
   }
 
   addScore(n) {
@@ -538,4 +587,4 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
   window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js').catch(() => {}); });
 }
 
-window.BrickArcade = { LCD, HUD, Input, Sound, Game, Stats, GAMES, PALETTES, SKINS, SITE, store, segSVG, sleep, fmt, dayKey, dayNumber, dailyGame, hashSeed, mulberry32 };
+window.BrickArcade = { LCD, HUD, Input, Sound, Game, Stats, Leaderboard, GAMES, PALETTES, SKINS, SITE, store, segSVG, sleep, fmt, dayKey, dayNumber, dailyGame, hashSeed, mulberry32 };
