@@ -3,23 +3,23 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-  <title>Tank Battle Game Online Free, No Download | Retro Classic Games</title>
-  <meta name="description" content="Play the classic handheld tank battle game online for free. Hold the bottom of the screen against waves of enemy tanks. No download, no sign-up, works on your phone.">
-  <link rel="canonical" href="https://retroclassic.games/tanks">
+  <title>Space Invaders Style Shooter Online Free, No Download | Retro Classic Games</title>
+  <meta name="description" content="Play a Space Invaders style shooter online for free, rebuilt for the brick handheld. Fifteen aliens march down the screen, you have one ship and three lives. No download, no sign-up, works on your phone.">
+  <link rel="canonical" href="https://retroclassic.games/invaders">
   <meta name="theme-color" content="#12072b">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Retro Classic Games">
-  <meta property="og:title" content="Tank Battle Game Online Free, No Download | Retro Classic Games">
-  <meta property="og:description" content="Play the classic handheld tank battle game online for free. Hold the bottom of the screen against waves of enemy tanks. No download, no sign-up, works on your phone.">
-  <meta property="og:url" content="https://retroclassic.games/tanks">
+  <meta property="og:title" content="Space Invaders Style Shooter Online Free, No Download | Retro Classic Games">
+  <meta property="og:description" content="Play a Space Invaders style shooter online for free, rebuilt for the brick handheld. Fifteen aliens march down the screen, you have one ship and three lives. No download, no sign-up, works on your phone.">
+  <meta property="og:url" content="https://retroclassic.games/invaders">
   <meta property="og:image" content="https://retroclassic.games/og-image.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Tank Battle Game Online Free, No Download | Retro Classic Games">
-  <meta name="twitter:description" content="Play the classic handheld tank battle game online for free. Hold the bottom of the screen against waves of enemy tanks. No download, no sign-up, works on your phone.">
+  <meta name="twitter:title" content="Space Invaders Style Shooter Online Free, No Download | Retro Classic Games">
+  <meta name="twitter:description" content="Play a Space Invaders style shooter online for free, rebuilt for the brick handheld. Fifteen aliens march down the screen, you have one ship and three lives. No download, no sign-up, works on your phone.">
   <meta name="twitter:image" content="https://retroclassic.games/og-image.png">
-  <script type="application/ld+json">{"@context": "https://schema.org", "@type": "VideoGame", "name": "Tanks", "url": "https://retroclassic.games/tanks", "description": "Play the classic handheld tank battle game online for free. Hold the bottom of the screen against waves of enemy tanks. No download, no sign-up, works on your phone.", "image": "https://retroclassic.games/og-image.png", "applicationCategory": "Game", "gamePlatform": "Web browser", "operatingSystem": "Any", "playMode": "SinglePlayer", "genre": "Retro", "isAccessibleForFree": true, "offers": {"@type": "Offer", "price": "0", "priceCurrency": "GBP"}, "author": {"@type": "Person", "name": "Blessing Fasina", "url": "https://blessingfasina.com"}, "isPartOf": {"@type": "WebSite", "name": "Retro Classic Games", "url": "https://retroclassic.games/"}}</script>
+  <script type="application/ld+json">{"@context": "https://schema.org", "@type": "VideoGame", "name": "Invaders", "url": "https://retroclassic.games/invaders", "description": "Play a Space Invaders style shooter online for free, rebuilt for the brick handheld. Fifteen aliens march down the screen, you have one ship and three lives. No download, no sign-up, works on your phone.", "image": "https://retroclassic.games/og-image.png", "applicationCategory": "Game", "gamePlatform": "Web browser", "operatingSystem": "Any", "playMode": "SinglePlayer", "genre": "Retro", "isAccessibleForFree": true, "offers": {"@type": "Offer", "price": "0", "priceCurrency": "GBP"}, "author": {"@type": "Person", "name": "Blessing Fasina", "url": "https://blessingfasina.com"}, "isPartOf": {"@type": "WebSite", "name": "Retro Classic Games", "url": "https://retroclassic.games/"}}</script>
   <link rel="icon" href="/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
   <link rel="manifest" href="/manifest.webmanifest">
@@ -32,21 +32,20 @@
   <main class="console" style="--cols:10;--rows:20">
     <header class="console__top">
       <a class="back" href="/">◀ ALL GAMES</a>
-      <h1 class="console__title">TANKS<span class="console__mode" data-mode hidden>· DAILY</span></h1>
+      <h1 class="console__title">INVADERS<span class="console__mode" data-mode hidden>· DAILY</span></h1>
       <div class="console__chips"><button class="chip" data-mute type="button" aria-pressed="true">SOUND ON</button><button class="chip" data-settings type="button" aria-label="Settings">⚙</button></div>
     </header>
 
     <section class="screen" aria-label="Game screen">
       <div class="screen__inner">
         <div class="lcd-wrap">
-          <canvas id="lcd" class="lcd" width="200" height="400" aria-label="Tanks playfield"></canvas>
+          <canvas id="lcd" class="lcd" width="200" height="400" aria-label="Invaders playfield"></canvas>
           <div id="overlay" class="overlay" role="status">PRESS<br>START</div>
         </div>
         <aside class="hud" aria-label="Score panel">
         <div class="hud__item"><span>SCORE</span><div class="seg" data-hud="score"></div></div>
         <div class="hud__item"><span>HI-SCORE</span><div class="seg" data-hud="hi"></div></div>
-        <div class="hud__item"><span>LEVEL</span><div class="seg" data-hud="level"></div></div>
-        <div class="hud__item"><span>TANKS</span><div class="seg" data-hud="tanks"></div></div>
+        <div class="hud__item"><span>WAVE</span><div class="seg" data-hud="level"></div></div>
         <div class="hud__item"><span>LIVES</span><div class="seg" data-hud="lives"></div></div>
         </aside>
       </div>
@@ -82,19 +81,19 @@
   </main>
 
   <section class="about">
-    <h2>How to play Tanks</h2>
+    <h2>How to play Invaders</h2>
     <ol>
-        <li>Drive with the arrow keys, WASD or the yellow buttons. Your tank turns to face the way you move.</li>
-        <li>Press Space or the blue button to fire in the direction you are facing. Two shots can be in the air at once.</li>
-        <li>Enemy tanks come from the top. Destroy ten to reach the next level, which brings more of them, faster.</li>
-        <li>Their shells and yours cancel each other out. You have three lives and a short shield after each hit.</li>
+        <li>Move your ship with the left and right arrows, A and D, or the yellow buttons.</li>
+        <li>Press Space, Up or the blue button to fire. Only one shot can be in the air at a time, so make it count.</li>
+        <li>The formation steps sideways and drops a row each time it hits the edge. The fewer aliens left, the faster it moves.</li>
+        <li>Their bombs cost you a life if they land on your ship. Your shot can knock a bomb out of the air. Clear the wave to bring on the next one, which starts lower.</li>
     </ol>
     <h2>About this game</h2>
-    <p>Tanks is the brick handheld take on Battle City. Enemy tanks wander down the screen and, when they line up with your column, they turn and shoot. Keep moving sideways, fire down the columns they are in, and use your shells to knock theirs out of the air. The level counter in the side panel shows how many tanks are left before the next wave.</p>
-    <p class="about__more">More free retro games: <a href="/snake">Snake</a>, <a href="/breaker">Brick Breaker</a>, <a href="/racer">Brick Racer</a>, <a href="/stack">Brick Stack</a>, <a href="/pong">Pong</a>, <a href="/crossing">Road Crossing</a>, <a href="/invaders">Invaders</a>, <a href="/flappy">Flappy</a>. <a href="/">Back to all games</a>.</p>
+    <p>Invaders is the arcade classic at brick handheld scale: a five by three formation, one ship, and the famous speed-up as the formation thins. Shoot the columns on the edges first so the formation takes longer to reach the sides, and never let the last alien get low, because at that point it is moving faster than you can react.</p>
+    <p class="about__more">More free retro games: <a href="/snake">Snake</a>, <a href="/breaker">Brick Breaker</a>, <a href="/racer">Brick Racer</a>, <a href="/stack">Brick Stack</a>, <a href="/pong">Pong</a>, <a href="/tanks">Tanks</a>, <a href="/crossing">Road Crossing</a>, <a href="/flappy">Flappy</a>. <a href="/">Back to all games</a>.</p>
   </section>
 
   <script src="/js/lcd.js"></script>
-  <script src="/js/tanks.js"></script>
+  <script src="/js/invaders.js"></script>
 </body>
 </html>

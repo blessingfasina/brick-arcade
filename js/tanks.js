@@ -110,8 +110,8 @@
     driveEnemy(e) {
       const p = this.player;
       const aligned = Math.abs(e.x - p.x) <= 1 && e.y < p.y;
-      if (aligned && Math.random() < 0.5) e.dir = 'down';
-      else if (Math.random() < 0.12) e.dir = this.pickDir();
+      if (aligned && this.random() < 0.5) e.dir = 'down';
+      else if (this.random() < 0.12) e.dir = this.pickDir();
       let [dx, dy] = DIRS[e.dir];
       if (!this.canMove(e, e.x + dx, e.y + dy)) {
         e.dir = this.pickDir();
@@ -122,11 +122,11 @@
       e.y += dy;
       const enemyShots = this.bullets.filter((b) => b.owner === 'e').length;
       const trigger = (aligned && e.dir === 'down' ? 0.35 : 0.05) + this.level * 0.01;
-      if (enemyShots < 3 && Math.random() < trigger) this.bullets.push(this.bulletFrom(e, 'e'));
+      if (enemyShots < 3 && this.random() < trigger) this.bullets.push(this.bulletFrom(e, 'e'));
     }
 
     pickDir() {
-      const r = Math.random();
+      const r = this.random();
       if (r < 0.4) return 'down';
       if (r < 0.6) return 'left';
       if (r < 0.8) return 'right';
@@ -134,7 +134,7 @@
     }
 
     spawnEnemy() {
-      const spots = [...SPAWN_X].sort(() => Math.random() - 0.5);
+      const spots = [...SPAWN_X].sort(() => this.random() - 0.5);
       for (const x of spots) {
         const probe = { x, y: 0 };
         if (![this.player, ...this.enemies].some((t) => overlaps(probe, t))) {

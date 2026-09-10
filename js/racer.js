@@ -53,7 +53,7 @@
       for (const e of this.enemies) e.y++;
       const last = this.enemies[this.enemies.length - 1];
       if (!last || last.y >= GAP - Math.min(2, Math.floor(this.level / 4))) {
-        if (Math.random() < 0.6) {
+        if (this.random() < 0.6) {
           // Never the same lane three times in a row, so the road keeps you moving.
           const prev = this.enemies.slice(-2).map((e) => e.lane);
           let lane = this.rand(LANES.length);

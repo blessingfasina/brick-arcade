@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>Flappy Bird Style Game Online Free, No Download | Retro Classic Games</title>
+  <meta name="description" content="Play a Flappy Bird style game online for free on the retro brick screen. Tap to flap, thread the gaps, one life, no mercy. No download, no sign-up, works on your phone.">
+  <link rel="canonical" href="https://retroclassic.games/flappy">
+  <meta name="theme-color" content="#12072b">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Retro Classic Games">
+  <meta property="og:title" content="Flappy Bird Style Game Online Free, No Download | Retro Classic Games">
+  <meta property="og:description" content="Play a Flappy Bird style game online for free on the retro brick screen. Tap to flap, thread the gaps, one life, no mercy. No download, no sign-up, works on your phone.">
+  <meta property="og:url" content="https://retroclassic.games/flappy">
+  <meta property="og:image" content="https://retroclassic.games/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Flappy Bird Style Game Online Free, No Download | Retro Classic Games">
+  <meta name="twitter:description" content="Play a Flappy Bird style game online for free on the retro brick screen. Tap to flap, thread the gaps, one life, no mercy. No download, no sign-up, works on your phone.">
+  <meta name="twitter:image" content="https://retroclassic.games/og-image.png">
+  <script type="application/ld+json">{"@context": "https://schema.org", "@type": "VideoGame", "name": "Flappy", "url": "https://retroclassic.games/flappy", "description": "Play a Flappy Bird style game online for free on the retro brick screen. Tap to flap, thread the gaps, one life, no mercy. No download, no sign-up, works on your phone.", "image": "https://retroclassic.games/og-image.png", "applicationCategory": "Game", "gamePlatform": "Web browser", "operatingSystem": "Any", "playMode": "SinglePlayer", "genre": "Retro", "isAccessibleForFree": true, "offers": {"@type": "Offer", "price": "0", "priceCurrency": "GBP"}, "author": {"@type": "Person", "name": "Blessing Fasina", "url": "https://blessingfasina.com"}, "isPartOf": {"@type": "WebSite", "name": "Retro Classic Games", "url": "https://retroclassic.games/"}}</script>
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="page-game">
+  <main class="console" style="--cols:10;--rows:20">
+    <header class="console__top">
+      <a class="back" href="/">◀ ALL GAMES</a>
+      <h1 class="console__title">FLAPPY<span class="console__mode" data-mode hidden>· DAILY</span></h1>
+      <div class="console__chips"><button class="chip" data-mute type="button" aria-pressed="true">SOUND ON</button><button class="chip" data-settings type="button" aria-label="Settings">⚙</button></div>
+    </header>
+
+    <section class="screen" aria-label="Game screen">
+      <div class="screen__inner">
+        <div class="lcd-wrap">
+          <canvas id="lcd" class="lcd" width="200" height="400" aria-label="Flappy playfield"></canvas>
+          <div id="overlay" class="overlay" role="status">PRESS<br>START</div>
+        </div>
+        <aside class="hud" aria-label="Score panel">
+        <div class="hud__item"><span>SCORE</span><div class="seg" data-hud="score"></div></div>
+        <div class="hud__item"><span>HI-SCORE</span><div class="seg" data-hud="hi"></div></div>
+        <div class="hud__item"><span>LEVEL</span><div class="seg" data-hud="level"></div></div>
+        <div class="hud__item"><span>PIPES</span><div class="seg" data-hud="pipes"></div></div>
+        </aside>
+      </div>
+    </section>
+
+    <section class="controls" aria-label="Controls">
+      <div class="dpad">
+        <button class="btn btn--dir up" data-btn="up" type="button" aria-label="Up">▲</button>
+        <button class="btn btn--dir left" data-btn="left" type="button" aria-label="Left">◀</button>
+        <button class="btn btn--dir right" data-btn="right" type="button" aria-label="Right">▶</button>
+        <button class="btn btn--dir down" data-btn="down" type="button" aria-label="Down">▼</button>
+      </div>
+      <div class="actions">
+        <div class="pills">
+          <button class="pill" data-btn="start" type="button">START</button>
+          <button class="pill" data-btn="pause" type="button">PAUSE</button>
+        </div>
+        <button class="btn btn--action" data-btn="action" type="button" aria-label="FLAP"></button>
+        <span class="btn-label">FLAP</span>
+      </div>
+    </section>
+
+
+    <div class="settings" id="settings" hidden aria-label="Settings">
+      <div class="settings__row"><span>CONSOLE COLOUR</span><div class="swatches"></div></div>
+      <label class="settings__row"><span>BIG BUTTONS</span><input type="checkbox" data-set="bigpad"></label>
+      <label class="settings__row"><span>HIGH CONTRAST SCREEN</span><input type="checkbox" data-set="contrast"></label>
+      <label class="settings__row"><span>SOUND</span><input type="checkbox" data-set="sound"></label>
+      <button type="button" class="settings__close" data-close>DONE</button>
+    </div>
+
+    <p class="hint">Arrows / WASD move · Space flaps · Enter starts and pauses · M toggles sound</p>
+  </main>
+
+  <section class="about">
+    <h2>How to play Flappy</h2>
+    <ol>
+        <li>Press Space, Up or the blue button to flap. Gravity does the rest.</li>
+        <li>Fly through the gap in each pipe. Every pipe you pass scores points.</li>
+        <li>Every five pipes the level goes up, the pipes come faster and the gaps get tighter.</li>
+        <li>One touch of a pipe, the ceiling or the floor and it is over. Press START to go again.</li>
+    </ol>
+    <h2>About this game</h2>
+    <p>Flappy is the one that ruins lunch breaks. On the brick screen the bird is two cells, the pipes are two columns wide, and the gap shrinks from six rows to four as you level up. The trick is small, early taps rather than big rescues: keep the bird in the middle of the screen and only flap when it starts to dip.</p>
+    <p class="about__more">More free retro games: <a href="/snake">Snake</a>, <a href="/breaker">Brick Breaker</a>, <a href="/racer">Brick Racer</a>, <a href="/stack">Brick Stack</a>, <a href="/pong">Pong</a>, <a href="/tanks">Tanks</a>, <a href="/crossing">Road Crossing</a>, <a href="/invaders">Invaders</a>. <a href="/">Back to all games</a>.</p>
+  </section>
+
+  <script src="/js/lcd.js"></script>
+  <script src="/js/flappy.js"></script>
+</body>
+</html>

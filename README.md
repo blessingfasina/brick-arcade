@@ -2,7 +2,7 @@
 
 Live at https://retroclassic.games
 
-Six classic handheld brick games in the browser: Snake, Brick Breaker, Brick Racer, Brick Stack, Pong and Tanks.
+Nine classic handheld brick games in the browser: Snake, Brick Breaker, Brick Racer, Brick Stack, Pong, Tanks, Road Crossing, Invaders and Flappy. Daily challenge with a shared seed, local scoreboard, installable and works offline.
 Plain HTML, CSS and JavaScript. No build step, no dependencies.
 
 ## Run locally

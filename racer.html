@@ -21,6 +21,7 @@
   <meta name="twitter:image" content="https://retroclassic.games/og-image.png">
   <script type="application/ld+json">{"@context": "https://schema.org", "@type": "VideoGame", "name": "Brick Racer", "url": "https://retroclassic.games/racer", "description": "Play the classic handheld car racing game online for free. Two lanes, endless traffic, hold boost if you dare. No download, no sign-up, works on your phone.", "image": "https://retroclassic.games/og-image.png", "applicationCategory": "Game", "gamePlatform": "Web browser", "operatingSystem": "Any", "playMode": "SinglePlayer", "genre": "Retro", "isAccessibleForFree": true, "offers": {"@type": "Offer", "price": "0", "priceCurrency": "GBP"}, "author": {"@type": "Person", "name": "Blessing Fasina", "url": "https://blessingfasina.com"}, "isPartOf": {"@type": "WebSite", "name": "Retro Classic Games", "url": "https://retroclassic.games/"}}</script>
   <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -31,8 +32,8 @@
   <main class="console" style="--cols:10;--rows:20">
     <header class="console__top">
       <a class="back" href="/">◀ ALL GAMES</a>
-      <h1 class="console__title">BRICK RACER</h1>
-      <button class="chip" data-mute type="button" aria-pressed="true">SOUND ON</button>
+      <h1 class="console__title">BRICK RACER<span class="console__mode" data-mode hidden>· DAILY</span></h1>
+      <div class="console__chips"><button class="chip" data-mute type="button" aria-pressed="true">SOUND ON</button><button class="chip" data-settings type="button" aria-label="Settings">⚙</button></div>
     </header>
 
     <section class="screen" aria-label="Game screen">
@@ -68,6 +69,15 @@
       </div>
     </section>
 
+
+    <div class="settings" id="settings" hidden aria-label="Settings">
+      <div class="settings__row"><span>CONSOLE COLOUR</span><div class="swatches"></div></div>
+      <label class="settings__row"><span>BIG BUTTONS</span><input type="checkbox" data-set="bigpad"></label>
+      <label class="settings__row"><span>HIGH CONTRAST SCREEN</span><input type="checkbox" data-set="contrast"></label>
+      <label class="settings__row"><span>SOUND</span><input type="checkbox" data-set="sound"></label>
+      <button type="button" class="settings__close" data-close>DONE</button>
+    </div>
+
     <p class="hint">Arrows / WASD move · hold Space to boost · Enter starts and pauses · M toggles sound</p>
   </main>
 
@@ -81,7 +91,7 @@
     </ol>
     <h2>About this game</h2>
     <p>Brick Racer is the racing game from the 9999-in-1 style handhelds: a road made of dashes, a car made of seven cells and traffic that never ends. The trick is rhythm. Watch the top of the screen, not your own car, and switch lanes early. Boost is where the big scores are, but the road moves more than twice as fast, so use it in short bursts when the lane ahead is clear.</p>
-    <p class="about__more">More free retro games: <a href="/snake">Snake</a>, <a href="/breaker">Brick Breaker</a>, <a href="/stack">Brick Stack</a>, <a href="/pong">Pong</a>, <a href="/tanks">Tanks</a>. <a href="/">Back to all games</a>.</p>
+    <p class="about__more">More free retro games: <a href="/snake">Snake</a>, <a href="/breaker">Brick Breaker</a>, <a href="/stack">Brick Stack</a>, <a href="/pong">Pong</a>, <a href="/tanks">Tanks</a>, <a href="/crossing">Road Crossing</a>, <a href="/invaders">Invaders</a>, <a href="/flappy">Flappy</a>. <a href="/">Back to all games</a>.</p>
   </section>
 
   <script src="/js/lcd.js"></script>

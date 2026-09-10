@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Scoreboard | Retro Classic Games</title>
+  <meta name="description" content="Your high scores, daily challenge best, play streak and stats for every game at Retro Classic Games, saved on this device.">
+  <link rel="canonical" href="https://retroclassic.games/scores">
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#12072b">
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="page-hub page-scores">
+  <main class="hub">
+    <p class="hero__kicker"><a href="/">◀ ALL GAMES</a></p>
+    <h1 class="scores__title">SCOREBOARD</h1>
+    <p class="hub__tag">Everything here is saved in this browser only. Play on another phone and it starts from zero there.</p>
+
+    <section class="stats" aria-label="Your stats">
+      <div class="stat"><b data-streak>0</b><span>DAY STREAK</span></div>
+      <div class="stat"><b data-plays>0</b><span>GAMES PLAYED</span></div>
+      <div class="stat"><b data-days>0</b><span>DAYS PLAYED</span></div>
+      <div class="stat"><b data-daily-best>—</b><span>TODAY'S DAILY</span></div>
+    </section>
+
+    <p class="scores__daily">Today's daily challenge is <b data-daily-name>…</b>. <a data-daily-link href="/">Play it</a>.</p>
+
+    <div class="table-wrap">
+      <table class="scores">
+        <thead><tr><th>GAME</th><th class="num">BEST</th><th class="num">PLAYS</th><th class="num">AVG</th><th class="num">LAST</th></tr></thead>
+        <tbody data-rows></tbody>
+      </table>
+    </div>
+
+    <p class="scores__foot"><button type="button" class="chip chip--dark" data-reset>RESET ALL SCORES</button></p>
+  </main>
+  <script src="/js/lcd.js"></script>
+  <script src="/js/scores.js"></script>
+</body>
+</html>

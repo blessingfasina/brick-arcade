@@ -1,18 +1,58 @@
-/* Retro Classic Games — shared engine: LCD renderer, input, sound, HUD, game loop */
+/* Retro Classic Games — shared engine: LCD renderer, input, sound, HUD, game loop,
+   daily seeds, sharing, settings, stats */
 'use strict';
 
-const LCD_BG = '#9ead86';
-const LCD_ON = '#1f231d';
-const LCD_OFF = 'rgba(31,35,29,0.10)';
+const SITE = 'https://retroclassic.games';
+const GAMES = [
+  { id: 'snake', name: 'Snake', color: '#7dff5a' },
+  { id: 'breaker', name: 'Brick Breaker', color: '#ff8a2a' },
+  { id: 'racer', name: 'Brick Racer', color: '#3ee9ff' },
+  { id: 'stack', name: 'Brick Stack', color: '#ff5fb0' },
+  { id: 'pong', name: 'Pong', color: '#ffd400' },
+  { id: 'tanks', name: 'Tanks', color: '#b57bff' },
+  { id: 'crossing', name: 'Road Crossing', color: '#58e6b3' },
+  { id: 'invaders', name: 'Invaders', color: '#ff6b6b' },
+  { id: 'flappy', name: 'Flappy', color: '#7ab8ff' },
+];
+const PALETTES = {
+  classic: { bg: '#9ead86', on: '#1f231d', off: 'rgba(31,35,29,0.10)' },
+  contrast: { bg: '#eaf3d8', on: '#000000', off: 'rgba(0,0,0,0.07)' },
+};
+const SKINS = ['grey', 'lime', 'orange', 'cyan', 'pink', 'yellow', 'purple', 'black'];
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const fmt = (n) => Number(n).toLocaleString();
+const store = {
+  get(k, d = null) { try { const v = localStorage.getItem(k); return v === null ? d : v; } catch (_) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, String(v)); } catch (_) { /* private mode */ } },
+  json(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch (_) { return d; } },
+};
+
+/* ---------- Daily challenge helpers (UTC day, same seed for everyone) ---------- */
+const dayKey = (d = new Date()) => d.toISOString().slice(0, 10);
+const dayNumber = () => Math.floor(Date.now() / 86400000);
+const dailyGame = () => GAMES[dayNumber() % GAMES.length];
+function hashSeed(str) {
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+function mulberry32(a) {
+  return () => {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
 
 /* ---------- LCD grid renderer (brick-handheld cell look) ---------- */
 class LCD {
-  constructor(canvas, cols, rows) {
+  constructor(canvas, cols, rows, palette = PALETTES.classic) {
     this.canvas = canvas;
     this.cols = cols;
     this.rows = rows;
+    this.palette = palette;
     this.ctx = canvas.getContext('2d');
     this.cells = new Uint8Array(cols * rows);
     this.cell = 0;
@@ -30,9 +70,12 @@ class LCD {
     this.cell = cell;
     this.canvas.width = cell * this.cols;
     this.canvas.height = cell * this.rows;
-    this.sprites = { on: this.sprite(LCD_ON), off: this.sprite(LCD_OFF) };
+    this.makeSprites();
     this.draw();
   }
+
+  setPalette(palette) { this.palette = palette; this.makeSprites(); this.draw(); }
+  makeSprites() { if (this.cell) this.sprites = { on: this.sprite(this.palette.on), off: this.sprite(this.palette.off) }; }
 
   sprite(color) {
     const s = this.cell;
@@ -56,7 +99,6 @@ class LCD {
   get(x, y) {
     return x >= 0 && x < this.cols && y >= 0 && y < this.rows ? this.cells[y * this.cols + x] : 0;
   }
-  /** Paint a pattern of strings ('X' = on) at an offset. */
   blit(pattern, ox = 0, oy = 0) {
     pattern.forEach((row, y) => {
       for (let x = 0; x < row.length; x++) if (row[x] === 'X') this.set(ox + x, oy + y, 1);
@@ -67,7 +109,7 @@ class LCD {
     const s = this.cell;
     if (!s || !this.sprites) return;
     const g = this.ctx;
-    g.fillStyle = LCD_BG;
+    g.fillStyle = this.palette.bg;
     g.fillRect(0, 0, this.canvas.width, this.canvas.height);
     for (let y = 0; y < this.rows; y++) {
       for (let x = 0; x < this.cols; x++) {
@@ -105,15 +147,17 @@ function segSVG(value, digits) {
 }
 
 class HUD {
-  constructor(root) {
-    this.root = root;
-    this.cache = {};
-  }
+  constructor(root) { this.root = root; this.cache = {}; }
   set(key, value, digits = 4) {
     if (this.cache[key] === value) return;
     this.cache[key] = value;
     const el = this.root.querySelector(`[data-hud="${key}"]`);
     if (el) el.innerHTML = segSVG(value, digits);
+  }
+  flash() {
+    this.root.classList.remove('is-flash');
+    void this.root.offsetWidth;
+    this.root.classList.add('is-flash');
   }
 }
 
@@ -133,6 +177,7 @@ class Input {
     this.repeatable = new Set(['left', 'right', 'down']);
 
     window.addEventListener('keydown', (e) => {
+      if (e.target.closest?.('input, select, textarea')) return;
       const name = KEYMAP[e.key.toLowerCase()];
       if (!name) return;
       e.preventDefault();
@@ -151,7 +196,7 @@ class Input {
     let lastTap = 0;
     document.addEventListener('touchend', (e) => {
       const now = Date.now();
-      if (now - lastTap < 400 && !e.target.closest('a')) e.preventDefault();
+      if (now - lastTap < 400 && !e.target.closest('a, input, label, .settings')) e.preventDefault();
       lastTap = now;
     }, { passive: false });
     document.addEventListener('gesturestart', (e) => e.preventDefault(), { passive: false });
@@ -202,7 +247,7 @@ class Input {
 class Sound {
   constructor() {
     this.ctx = null;
-    this.muted = localStorage.getItem('brick.muted') === '1';
+    this.muted = store.get('brick.muted') === '1';
     const unlock = () => {
       if (!this.ctx) {
         const AC = window.AudioContext || window.webkitAudioContext;
@@ -213,11 +258,8 @@ class Sound {
     window.addEventListener('pointerdown', unlock);
     window.addEventListener('keydown', unlock);
   }
-  toggle() {
-    this.muted = !this.muted;
-    localStorage.setItem('brick.muted', this.muted ? '1' : '0');
-    return this.muted;
-  }
+  setMuted(m) { this.muted = m; store.set('brick.muted', m ? '1' : '0'); }
+  toggle() { this.setMuted(!this.muted); return this.muted; }
   play(freq, dur = 0.06, at = 0, type = 'square', vol = 0.06) {
     if (this.muted || !this.ctx) return;
     const t = this.ctx.currentTime + at;
@@ -231,10 +273,7 @@ class Sound {
     osc.start(t);
     osc.stop(t + dur + 0.02);
   }
-  seq(notes) {
-    let at = 0;
-    for (const [f, d] of notes) { this.play(f, d, at); at += d; }
-  }
+  seq(notes) { let at = 0; for (const [f, d] of notes) { this.play(f, d, at); at += d; } }
   tick() { this.play(1200, 0.025, 0, 'square', 0.03); }
   hit() { this.play(660, 0.06); }
   score() { this.seq([[880, 0.05], [1320, 0.09]]); }
@@ -242,16 +281,47 @@ class Sound {
   level() { this.seq([[660, 0.06], [880, 0.06], [1100, 0.06], [1320, 0.14]]); }
   over() { this.seq([[523, 0.12], [392, 0.12], [330, 0.12], [262, 0.3]]); }
   clear() { this.seq([[988, 0.05], [1319, 0.05], [1760, 0.12]]); }
+  best() { this.seq([[784, 0.07], [988, 0.07], [1175, 0.07], [1568, 0.07], [1175, 0.05], [1568, 0.22]]); }
+  boot() { this.seq([[523, 0.08], [659, 0.08], [784, 0.08], [1047, 0.16]]); }
 }
 
-/* ---------- Base game: loop, states, overlay, hi-score ---------- */
+/* ---------- Stats (local): plays per game, days played, totals ---------- */
+const Stats = {
+  read() { return store.json('brick.stats', { played: {}, total: {}, days: {}, last: {} }); },
+  record(id, score) {
+    const s = Stats.read();
+    s.played[id] = (s.played[id] || 0) + 1;
+    s.total[id] = (s.total[id] || 0) + score;
+    const d = dayKey();
+    s.days[d] = (s.days[d] || 0) + 1;
+    s.last[id] = d;
+    store.set('brick.stats', JSON.stringify(s));
+  },
+  streak() {
+    const s = Stats.read();
+    let n = 0;
+    const d = new Date();
+    if (!s.days[dayKey(d)]) d.setUTCDate(d.getUTCDate() - 1);
+    while (s.days[dayKey(d)]) { n++; d.setUTCDate(d.getUTCDate() - 1); }
+    return n;
+  },
+};
+
+/* ---------- Base game: loop, states, overlay, hi-score, daily, share, settings ---------- */
 class Game {
   constructor({ id, cols = 10, rows = 20, interval = 200 }) {
     this.id = id;
+    this.meta = GAMES.find((g) => g.id === id) || { id, name: id };
     this.cols = cols;
     this.rows = rows;
     this.baseInterval = interval;
     this.interval = interval;
+    this.console = document.querySelector('.console');
+    this.daily = new URLSearchParams(location.search).get('mode') === 'daily';
+    this.day = dayKey();
+    this.rng = this.daily ? mulberry32(hashSeed(`${this.day}:${id}`)) : null;
+    this.hiKey = this.daily ? `brick.daily.${id}.${this.day}` : `brick.hi.${id}`;
+
     this.lcd = new LCD(document.getElementById('lcd'), cols, rows);
     this.hud = new HUD(document.querySelector('.hud'));
     this.input = new Input(document);
@@ -259,7 +329,9 @@ class Game {
     this.overlay = document.getElementById('overlay');
     this.state = 'idle';
     this.score = 0;
-    this.hi = Number(localStorage.getItem('brick.hi.' + id)) || 0;
+    this.hi = Number(store.get(this.hiKey)) || 0;
+    this.prevHi = this.hi;
+    this.newBest = false;
     this.animToken = 0;
     this.last = 0;
     this.acc = 0;
@@ -269,15 +341,24 @@ class Game {
     this.input.on('action', () => { if (this.state === 'idle' || this.state === 'over') this.start(); });
     this.input.on('mute', () => this.toggleMute());
     document.querySelector('[data-mute]')?.addEventListener('click', () => this.toggleMute());
+    this.overlay.addEventListener('click', (e) => {
+      if (e.target.closest('[data-share]')) this.share();
+      else if (e.target.closest('[data-again]')) this.start();
+    });
+    this.initSettings();
     this.syncMute();
 
     document.addEventListener('visibilitychange', () => {
       if (document.hidden && this.state === 'playing') this.pause();
     });
 
+    if (this.daily) {
+      document.querySelector('[data-mode]')?.removeAttribute('hidden');
+      document.title = `Daily challenge: ${document.title}`;
+    }
     window.game = this;
     this.reset();
-    this.showOverlay('PRESS<br>START');
+    this.showOverlay(this.daily ? 'DAILY<br>CHALLENGE<small>PRESS START</small>' : 'PRESS<br>START');
     this.hud.set('hi', this.hi);
     this.hud.set('score', 0);
     requestAnimationFrame((t) => this.frame(t));
@@ -288,6 +369,10 @@ class Game {
   step() {}
   draw() {}
   tickInterval() { return this.interval; }
+
+  /* --- randomness: seeded on daily challenge days --- */
+  random() { return this.rng ? this.rng() : Math.random(); }
+  rand(n) { return Math.floor(this.random() * n); }
 
   /* --- state --- */
   toggleStart() {
@@ -302,26 +387,24 @@ class Game {
   start() {
     this.animToken++;
     this.score = 0;
+    this.prevHi = this.hi;
+    this.newBest = false;
+    if (this.daily) this.rng = mulberry32(hashSeed(`${this.day}:${this.id}`));
     this.hud.set('score', 0);
     this.reset();
     this.acc = 0;
     this.state = 'playing';
     this.hideOverlay();
-    this.sound.level();
+    this.sound.boot();
   }
-  pause() {
-    this.state = 'paused';
-    this.showOverlay('PAUSED');
-  }
-  resume() {
-    this.state = 'playing';
-    this.acc = 0;
-    this.hideOverlay();
-  }
+  pause() { this.state = 'paused'; this.showOverlay('PAUSED'); }
+  resume() { this.state = 'playing'; this.acc = 0; this.hideOverlay(); }
+
   async gameOver() {
     this.state = 'anim';
     this.sound.over();
     this.buzz([60, 40, 60]);
+    Stats.record(this.id, this.score);
     const token = ++this.animToken;
     for (let y = this.rows - 1; y >= 0; y--) {
       for (let x = 0; x < this.cols; x++) this.lcd.set(x, y, 1);
@@ -336,17 +419,81 @@ class Game {
       if (token !== this.animToken) return;
     }
     this.state = 'over';
-    this.showOverlay(this.score >= this.hi && this.score > 0 ? 'GAME OVER<br><small>NEW HI-SCORE</small>' : 'GAME OVER');
+    const line = this.newBest
+      ? `<small class="best">NEW BEST!<br><s>${fmt(this.prevHi)}</s> ${fmt(this.score)}</small>`
+      : `<small>SCORE ${fmt(this.score)}</small>`;
+    this.showOverlay(`GAME OVER${line}<div class="overlay__btns"><button type="button" data-share>SHARE</button><button type="button" data-again>AGAIN</button></div>`);
   }
 
   addScore(n) {
     this.score += n;
     if (this.score > this.hi) {
+      const first = !this.newBest && this.prevHi > 0;
       this.hi = this.score;
-      localStorage.setItem('brick.hi.' + this.id, String(this.hi));
+      store.set(this.hiKey, this.hi);
       this.hud.set('hi', this.hi);
+      if (first) { this.newBest = true; this.sound.best(); this.hud.flash(); this.buzz([30, 30, 30]); }
+      else if (!this.newBest) this.newBest = true;
     }
     this.hud.set('score', this.score);
+  }
+
+  /* --- sharing --- */
+  async share() {
+    const url = `${SITE}/${this.id}${this.daily ? '?mode=daily' : ''}`;
+    const text = this.daily
+      ? `Daily challenge ${this.day}: I scored ${fmt(this.score)} on ${this.meta.name}. Same game for everyone today, beat me:`
+      : `I scored ${fmt(this.score)} on ${this.meta.name} at Retro Classic Games. Beat me:`;
+    const btn = this.overlay.querySelector('[data-share]');
+    try {
+      if (navigator.share) { await navigator.share({ title: 'Retro Classic Games', text, url }); return; }
+      await navigator.clipboard.writeText(`${text} ${url}`);
+      if (btn) { btn.textContent = 'COPIED!'; setTimeout(() => { btn.textContent = 'SHARE'; }, 1500); }
+    } catch (_) { /* user cancelled */ }
+  }
+
+  /* --- settings: console colour, big buttons, high contrast, sound --- */
+  initSettings() {
+    const panel = document.getElementById('settings');
+    const open = document.querySelector('[data-settings]');
+    if (!panel || !open) { this.applySettings(); return; }
+    const sw = panel.querySelector('.swatches');
+    if (sw) sw.innerHTML = SKINS.map((s) => `<button type="button" class="swatch swatch--${s}" data-skin="${s}" aria-label="${s}"></button>`).join('');
+    open.addEventListener('click', () => { panel.hidden = !panel.hidden; if (!panel.hidden && this.state === 'playing') this.pause(); this.syncSettings(); });
+    panel.querySelector('[data-close]')?.addEventListener('click', () => { panel.hidden = true; });
+    panel.addEventListener('click', (e) => {
+      const s = e.target.closest('[data-skin]');
+      if (s) { store.set('brick.skin', s.dataset.skin); this.applySettings(); this.syncSettings(); }
+    });
+    panel.addEventListener('change', (e) => {
+      const k = e.target.dataset.set;
+      if (k === 'sound') this.sound.setMuted(!e.target.checked);
+      else if (k) store.set('brick.' + k, e.target.checked ? '1' : '0');
+      this.applySettings();
+      this.syncMute();
+    });
+    this.applySettings();
+  }
+  applySettings() {
+    const c = this.console;
+    if (!c) return;
+    c.dataset.skin = store.get('brick.skin', 'grey');
+    c.classList.toggle('console--big', store.get('brick.bigpad') === '1');
+    const hc = store.get('brick.contrast') === '1';
+    c.classList.toggle('console--hc', hc);
+    const pal = hc ? PALETTES.contrast : PALETTES.classic;
+    if (this.lcd.palette !== pal) this.lcd.setPalette(pal);
+    if (this.preview && this.preview.palette !== pal) this.preview.setPalette(pal);
+  }
+  syncSettings() {
+    const panel = document.getElementById('settings');
+    if (!panel) return;
+    const skin = store.get('brick.skin', 'grey');
+    panel.querySelectorAll('[data-skin]').forEach((b) => b.classList.toggle('is-on', b.dataset.skin === skin));
+    const set = (k, v) => { const el = panel.querySelector(`[data-set="${k}"]`); if (el) el.checked = v; };
+    set('bigpad', store.get('brick.bigpad') === '1');
+    set('contrast', store.get('brick.contrast') === '1');
+    set('sound', !this.sound.muted);
   }
 
   /* --- loop --- */
@@ -382,8 +529,13 @@ class Game {
       b.textContent = this.sound.muted ? 'SOUND OFF' : 'SOUND ON';
       b.setAttribute('aria-pressed', String(!this.sound.muted));
     }
+    this.syncSettings();
   }
-  rand(n) { return Math.floor(Math.random() * n); }
 }
 
-window.BrickArcade = { LCD, HUD, Input, Sound, Game, segSVG, sleep };
+/* ---------- Offline / install ---------- */
+if ('serviceWorker' in navigator && location.protocol === 'https:') {
+  window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js').catch(() => {}); });
+}
+
+window.BrickArcade = { LCD, HUD, Input, Sound, Game, Stats, GAMES, PALETTES, SKINS, SITE, store, segSVG, sleep, fmt, dayKey, dayNumber, dailyGame, hashSeed, mulberry32 };

@@ -29,9 +29,9 @@
 
     newBall() {
       this.ball = { x: this.paddle + 1, y: this.rows - 2 };
-      this.vel = { x: Math.random() < 0.5 ? -1 : 1, y: -1 };
+      this.vel = { x: this.random() < 0.5 ? -1 : 1, y: -1 };
       this.served = false;
-      this.cpuMiss = Math.random() < 0.5;
+      this.cpuMiss = this.random() < 0.5;
     }
 
     move(dx) {
@@ -50,10 +50,10 @@
       const zone = Math.min(this.rows - 4, 5 + this.level * 2);
       let target = null;
       if (this.vel.y < 0) {
-        if (this.cpuMiss) { if (this.ball.y < zone && Math.random() < 0.5) target = this.ball.x < this.cols / 2 ? this.cols - PADDLE : 0; }
-        else if (this.ball.y < zone && Math.random() < skill) target = this.ball.x - 1;
+        if (this.cpuMiss) { if (this.ball.y < zone && this.random() < 0.5) target = this.ball.x < this.cols / 2 ? this.cols - PADDLE : 0; }
+        else if (this.ball.y < zone && this.random() < skill) target = this.ball.x - 1;
       }
-      else if (Math.random() < 0.25) target = Math.floor((this.cols - PADDLE) / 2);
+      else if (this.random() < 0.25) target = Math.floor((this.cols - PADDLE) / 2);
       if (target === null) return;
       this.cpuPad = Math.max(0, Math.min(this.cols - PADDLE, this.cpuPad + Math.sign(target - this.cpuPad)));
     }
@@ -61,7 +61,7 @@
     bounce(pad, nx, dirY) {
       const rel = nx - pad;
       this.vel.y = dirY;
-      if (dirY < 0) this.cpuMiss = Math.random() < Math.max(0.1, 0.6 - (this.level - 1) * 0.07);
+      if (dirY < 0) this.cpuMiss = this.random() < Math.max(0.1, 0.6 - (this.level - 1) * 0.07);
       if (rel <= 0) this.vel.x = -1;
       else if (rel >= PADDLE - 1) this.vel.x = 1;
       this.ball.x = Math.max(0, Math.min(this.cols - 1, nx));

@@ -43,7 +43,7 @@
 
     resetBall() {
       this.ball = { x: this.paddle + 1, y: this.rows - 2 };
-      this.vel = { x: Math.random() < 0.5 ? -1 : 1, y: -1 };
+      this.vel = { x: this.random() < 0.5 ? -1 : 1, y: -1 };
       this.launched = false;
     }
 

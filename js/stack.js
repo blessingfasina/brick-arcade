@@ -144,7 +144,7 @@
 
     drawPreview() {
       // Created lazily: the base constructor calls reset() before subclass fields exist.
-      this.preview ||= new LCD(document.getElementById('next'), 4, 4);
+      this.preview ||= new LCD(document.getElementById('next'), 4, 4, this.lcd.palette);
       this.preview.clear();
       const cells = PIECES[this.next][0];
       const w = Math.max(...cells.map(([x]) => x)) + 1;
