@@ -4,13 +4,12 @@
   "redirects": [
     {
       "source": "/:path*",
-      "has": [{ "type": "host", "value": "brick-arcade-eight.vercel.app" }],
-      "destination": "https://retroclassic.games/:path*",
-      "permanent": true
-    },
-    {
-      "source": "/:path*",
-      "has": [{ "type": "host", "value": "www.retroclassic.games" }],
+      "has": [
+        {
+          "type": "host",
+          "value": "brick-arcade-eight.vercel.app"
+        }
+      ],
       "destination": "https://retroclassic.games/:path*",
       "permanent": true
     }
@@ -19,8 +18,14 @@
     {
       "source": "/(.*)",
       "headers": [
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "X-Frame-Options", "value": "SAMEORIGIN" }
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "SAMEORIGIN"
+        }
       ]
     }
   ]
