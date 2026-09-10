@@ -74,7 +74,7 @@ a { color: inherit; }
 @keyframes blink { to { visibility: hidden; } }
 
 .shelf { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }
-@media (min-width: 720px) { .shelf { grid-template-columns: repeat(4, 1fr); gap: 20px; } }
+@media (min-width: 720px) { .shelf { grid-template-columns: repeat(3, 1fr); gap: 20px; } }
 .hh {
   display: block; text-decoration: none; color: #1a1a1a;
   background: linear-gradient(180deg, color-mix(in srgb, var(--body) 80%, #fff), var(--body) 40%, color-mix(in srgb, var(--body) 75%, #000));

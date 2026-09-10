@@ -1,6 +1,6 @@
 # Brick Arcade
 
-Four classic handheld brick games in the browser: Snake, Brick Breaker, Brick Racer and Brick Stack.
+Six classic handheld brick games in the browser: Snake, Brick Breaker, Brick Racer, Brick Stack, Pong and Tanks.
 Plain HTML, CSS and JavaScript. No build step, no dependencies.
 
 ## Run locally
@@ -27,7 +27,7 @@ Vercel detects it as a static site. `vercel.json` turns on clean URLs so `/snake
 | Action | Keyboard | On screen |
 | --- | --- | --- |
 | Move | Arrow keys or WASD | Yellow d-pad |
-| Action (turbo, fire, boost, rotate) | Space, Z or X | Blue button |
+| Action (turbo, fire, boost, rotate, serve) | Space, Z or X | Blue button |
 | Start / pause | Enter, P | START / PAUSE pills |
 | Sound | M | SOUND chip |
 

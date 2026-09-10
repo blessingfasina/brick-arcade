@@ -4,10 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Brick Arcade</title>
-  <meta name="description" content="Bored? Play four classic handheld brick games free in your browser: Snake, Brick Breaker, Brick Racer and Brick Stack. No downloads, no sign-up.">
+  <meta name="description" content="Bored? Play four classic handheld brick games free in your browser: Snake, Brick Breaker, Brick Racer, Brick Stack, Pong and Tanks. No downloads, no sign-up.">
   <meta name="theme-color" content="#12072b">
   <meta property="og:title" content="Brick Arcade">
-  <meta property="og:description" content="Bored? Four classic handheld brick games, free in your browser. No downloads, no sign-up.">
+  <meta property="og:description" content="Bored? Six classic handheld brick games, free in your browser. No downloads, no sign-up.">
   <link rel="icon" href="/icon.svg" type="image/svg+xml">
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -32,7 +32,7 @@
         <span class="word"><span class="l">B</span><span class="l">R</span><span class="l">I</span><span class="l">C</span><span class="l">K</span></span>
         <span class="word"><span class="l">A</span><span class="l">R</span><span class="l">C</span><span class="l">A</span><span class="l">D</span><span class="l">E</span></span>
       </h1>
-      <p class="hero__tag">Four pocket classics from the little grey handheld, rebuilt for your browser. Pick a colour, press start, lose an afternoon.</p>
+      <p class="hero__tag">Six pocket classics from the little grey handheld, rebuilt for your browser. Pick a colour, press start, lose an afternoon.</p>
       <div class="hero__cta">
         <a class="cta" href="/snake" data-random>▶ PLAY A RANDOM GAME</a>
         <span class="blink">PRESS START</span>
@@ -68,10 +68,24 @@
         <p class="hh__desc">Drop blocks, clear lines, don’t top out.</p>
         <p class="hh__best" data-best>NO SCORE YET</p>
       </a>
+      <a class="hh" href="/pong" data-game="pong" style="--body:#ffd400;--tilt:2deg">
+        <div class="hh__screen"><canvas width="80" height="80" aria-hidden="true"></canvas></div>
+        <div class="hh__keys" aria-hidden="true"><i class="k k--y"></i><i class="k k--y"></i><i class="k k--b"></i></div>
+        <h2 class="hh__name">PONG</h2>
+        <p class="hh__desc">You vs the CPU. First to five.</p>
+        <p class="hh__best" data-best>NO SCORE YET</p>
+      </a>
+      <a class="hh" href="/tanks" data-game="tanks" style="--body:#b57bff;--tilt:-2deg">
+        <div class="hh__screen"><canvas width="80" height="80" aria-hidden="true"></canvas></div>
+        <div class="hh__keys" aria-hidden="true"><i class="k k--y"></i><i class="k k--y"></i><i class="k k--b"></i></div>
+        <h2 class="hh__name">TANKS</h2>
+        <p class="hh__desc">Hold the line against the tank waves.</p>
+        <p class="hh__best" data-best>NO SCORE YET</p>
+      </a>
     </section>
 
     <section class="stats" aria-label="Fun facts">
-      <div class="stat"><b>4</b><span>GAMES</span></div>
+      <div class="stat"><b>6</b><span>GAMES</span></div>
       <div class="stat"><b>0</b><span>DOWNLOADS</span></div>
       <div class="stat"><b>0</b><span>ADS</span></div>
       <div class="stat"><b>∞</b><span>REPLAYS</span></div>

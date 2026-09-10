@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Pong — Brick Arcade</title>
+  <meta name="description" content="Beat the CPU paddle to five points and the game speeds up. Play free in your browser.">
+  <meta name="theme-color" content="#0e1013">
+  <meta property="og:title" content="Pong — Brick Arcade">
+  <meta property="og:description" content="Beat the CPU paddle to five points and the game speeds up. Play free in your browser.">
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="page-game">
+  <main class="console" style="--cols:10;--rows:20">
+    <header class="console__top">
+      <a class="back" href="/">◀ ARCADE</a>
+      <h1 class="console__title">PONG</h1>
+      <button class="chip" data-mute type="button" aria-pressed="true">SOUND ON</button>
+    </header>
+
+    <section class="screen" aria-label="Game screen">
+      <div class="screen__inner">
+        <div class="lcd-wrap">
+          <canvas id="lcd" class="lcd" width="200" height="400" aria-label="Pong playfield"></canvas>
+          <div id="overlay" class="overlay" role="status">PRESS<br>START</div>
+        </div>
+        <aside class="hud" aria-label="Score panel">
+        <div class="hud__item"><span>YOU</span><div class="seg" data-hud="you"></div></div>
+        <div class="hud__item"><span>CPU</span><div class="seg" data-hud="cpu"></div></div>
+        <div class="hud__item"><span>LEVEL</span><div class="seg" data-hud="level"></div></div>
+        <div class="hud__item"><span>SCORE</span><div class="seg" data-hud="score"></div></div>
+        <div class="hud__item"><span>HI-SCORE</span><div class="seg" data-hud="hi"></div></div>
+        </aside>
+      </div>
+    </section>
+
+    <section class="controls" aria-label="Controls">
+      <div class="dpad">
+        <button class="btn btn--dir up" data-btn="up" type="button" aria-label="Up">▲</button>
+        <button class="btn btn--dir left" data-btn="left" type="button" aria-label="Left">◀</button>
+        <button class="btn btn--dir right" data-btn="right" type="button" aria-label="Right">▶</button>
+        <button class="btn btn--dir down" data-btn="down" type="button" aria-label="Down">▼</button>
+      </div>
+      <div class="actions">
+        <div class="pills">
+          <button class="pill" data-btn="start" type="button">START</button>
+          <button class="pill" data-btn="pause" type="button">PAUSE</button>
+        </div>
+        <button class="btn btn--action" data-btn="action" type="button" aria-label="SERVE"></button>
+        <span class="btn-label">SERVE</span>
+      </div>
+    </section>
+
+    <p class="hint">Arrows / WASD move · Space serves the ball · Enter starts and pauses · M toggles sound</p>
+  </main>
+
+  <script src="/js/lcd.js"></script>
+  <script src="/js/pong.js"></script>
+</body>
+</html>

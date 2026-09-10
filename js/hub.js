@@ -94,6 +94,36 @@
         for (const [x, y] of piece.shape) lcd.set(piece.x + x, piece.y + y, 1);
       };
     },
+    pong() {
+      let ball = { x: 3, y: 4 }, vel = { x: 1, y: 1 }, top = 3, bottom = 3;
+      return (lcd) => {
+        if (ball.x + vel.x < 0 || ball.x + vel.x > 7) vel.x = -vel.x;
+        if (ball.y + vel.y <= 0 || ball.y + vel.y >= 7) vel.y = -vel.y;
+        ball.x += vel.x; ball.y += vel.y;
+        const chase = (pad) => Math.max(0, Math.min(5, pad + Math.sign(ball.x - 1 - pad)));
+        if (vel.y < 0) top = chase(top); else bottom = chase(bottom);
+        for (let i = 0; i < 3; i++) { lcd.set(top + i, 0, 1); lcd.set(bottom + i, 7, 1); }
+        lcd.set(ball.x, ball.y, 1);
+      };
+    },
+    tanks() {
+      const UP = ['.X.', 'XXX', 'X.X'], DOWN = ['X.X', 'XXX', '.X.'];
+      let enemy = { x: 0, dir: 1 }, px = 2, shot = null, boom = 0;
+      return (lcd, tick) => {
+        if (boom > 0) { boom--; if (boom === 0) enemy = { x: rand(6), dir: Math.random() < 0.5 ? 1 : -1 }; }
+        else if (tick % 2 === 0) {
+          enemy.x += enemy.dir;
+          if (enemy.x <= 0 || enemy.x >= 5) enemy.dir = -enemy.dir;
+        }
+        px += Math.sign(enemy.x - px);
+        if (shot) { shot.y--; if (shot.y < 0) shot = null; else if (boom === 0 && shot.y <= 2 && shot.x >= enemy.x && shot.x <= enemy.x + 2) { shot = null; boom = 4; } }
+        else if (px === enemy.x && boom === 0) shot = { x: px + 1, y: 4 };
+        if (boom > 0) { if (boom % 2) lcd.blit(['X.X', '.X.', 'X.X'], enemy.x, 0); }
+        else lcd.blit(DOWN, enemy.x, 0);
+        lcd.blit(UP, px, 5);
+        if (shot) lcd.set(shot.x, shot.y, 1);
+      };
+    },
   };
 
   const screens = [];
@@ -114,7 +144,7 @@
   if (!reduceMotion) setInterval(renderDemos, 200);
 
   /* ---------- Random game button ---------- */
-  const games = ['snake', 'breaker', 'racer', 'stack'];
+  const games = ['snake', 'breaker', 'racer', 'stack', 'pong', 'tanks'];
   const random = document.querySelector('[data-random]');
   if (random) random.href = '/' + games[rand(games.length)];
 
