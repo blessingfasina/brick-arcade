@@ -4,7 +4,7 @@
   const { Game, sleep } = window.BrickArcade;
 
   const CAR = [[1, 0], [0, 1], [1, 1], [2, 1], [1, 2], [0, 3], [2, 3]]; // 3 wide, 4 tall
-  const ROAD_MIN = 1, ROAD_MAX = 6; // car x range (walls at 0 and 9)
+  const LANES = [2, 5]; // car x for the left and right lane (walls at 0 and 9)
   const GAP = 6;
 
   class Racer extends Game {
@@ -15,7 +15,8 @@
     }
 
     reset() {
-      this.player = { x: 4, y: this.rows - 4 };
+      this.lane = 0;
+      this.player = { x: LANES[this.lane], y: this.rows - 4 };
       this.enemies = [];
       this.wall = 0;
       this.level = 1;
@@ -34,7 +35,11 @@
 
     move(dx) {
       if (this.state !== 'playing') return;
-      this.player.x = Math.max(ROAD_MIN, Math.min(ROAD_MAX, this.player.x + dx));
+      const lane = Math.max(0, Math.min(LANES.length - 1, this.lane + dx));
+      if (lane === this.lane) return;
+      this.lane = lane;
+      this.player.x = LANES[lane];
+      this.sound.tick();
       if (this.collides()) this.crash();
     }
 
@@ -49,9 +54,11 @@
       const last = this.enemies[this.enemies.length - 1];
       if (!last || last.y >= GAP - Math.min(2, Math.floor(this.level / 4))) {
         if (Math.random() < 0.6) {
-          let x = ROAD_MIN + this.rand(ROAD_MAX - ROAD_MIN + 1);
-          if (last && Math.abs(x - last.x) > 4) x = last.x + Math.sign(x - last.x) * 4; // keep it dodgeable
-          this.enemies.push({ x, y: -4 });
+          // Never the same lane three times in a row, so the road keeps you moving.
+          const prev = this.enemies.slice(-2).map((e) => e.lane);
+          let lane = this.rand(LANES.length);
+          if (prev.length === 2 && prev[0] === prev[1] && lane === prev[0]) lane = 1 - lane;
+          this.enemies.push({ lane, x: LANES[lane], y: -4 });
         }
       }
       const before = this.enemies.length;
@@ -90,6 +97,8 @@
       }
       this.hidden = false;
       this.enemies = [];
+      this.lane = 0;
+      this.player.x = LANES[0];
       this.acc = 0;
       this.state = 'playing';
     }
