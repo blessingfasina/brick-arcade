@@ -145,6 +145,18 @@ class Input {
     });
     window.addEventListener('blur', () => this.releaseAll());
 
+    // Mobile browsers zoom on a fast double tap. On a game page every second tap
+    // is a game move, so cancel the browser's default for rapid repeat taps and
+    // ignore pinch gestures entirely.
+    let lastTap = 0;
+    document.addEventListener('touchend', (e) => {
+      const now = Date.now();
+      if (now - lastTap < 400 && !e.target.closest('a')) e.preventDefault();
+      lastTap = now;
+    }, { passive: false });
+    document.addEventListener('gesturestart', (e) => e.preventDefault(), { passive: false });
+    document.addEventListener('dblclick', (e) => { if (!e.target.closest('a')) e.preventDefault(); });
+
     root.querySelectorAll('[data-btn]').forEach((btn) => {
       const name = btn.dataset.btn;
       btn.addEventListener('pointerdown', (e) => {
