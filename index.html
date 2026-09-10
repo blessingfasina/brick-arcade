@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Brick Arcade</title>
+  <meta name="description" content="Bored? Play four classic handheld brick games free in your browser: Snake, Brick Breaker, Brick Racer and Brick Stack. No downloads, no sign-up.">
+  <meta name="theme-color" content="#0e1013">
+  <meta property="og:title" content="Brick Arcade">
+  <meta property="og:description" content="Bored? Play four classic handheld brick games free in your browser: Snake, Brick Breaker, Brick Racer and Brick Stack. No downloads, no sign-up.">
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="page-hub">
+  <main class="hub">
+    <p class="hub__kicker">FREE · NO SIGN-UP · WORKS ON YOUR PHONE</p>
+    <h1 class="hub__title">BRICK ARCADE</h1>
+    <p class="hub__tag">Bored? Pick up the little grey handheld again. Four classics, exactly as you remember them, with your high scores saved on this device.</p>
+
+    <section class="grid" aria-label="Games">
+      <a class="card" href="/snake" data-game="snake">
+        <canvas width="80" height="80" aria-hidden="true"></canvas>
+        <h2 class="card__name">SNAKE</h2>
+        <p class="card__desc">Eat, grow, and don’t bite yourself. The handheld classic.</p>
+        <div class="card__meta"><span>PLAY ▶</span><span data-best>NO SCORE YET</span></div>
+      </a>
+      <a class="card" href="/breaker" data-game="breaker">
+        <canvas width="80" height="80" aria-hidden="true"></canvas>
+        <h2 class="card__name">BRICK BREAKER</h2>
+        <p class="card__desc">Bounce the ball, smash every brick, clear the level.</p>
+        <div class="card__meta"><span>PLAY ▶</span><span data-best>NO SCORE YET</span></div>
+      </a>
+      <a class="card" href="/racer" data-game="racer">
+        <canvas width="80" height="80" aria-hidden="true"></canvas>
+        <h2 class="card__name">BRICK RACER</h2>
+        <p class="card__desc">Weave through traffic on an endless road. Hold boost if you dare.</p>
+        <div class="card__meta"><span>PLAY ▶</span><span data-best>NO SCORE YET</span></div>
+      </a>
+      <a class="card" href="/stack" data-game="stack">
+        <canvas width="80" height="80" aria-hidden="true"></canvas>
+        <h2 class="card__name">BRICK STACK</h2>
+        <p class="card__desc">Drop the falling blocks and clear lines before the stack reaches the top.</p>
+        <div class="card__meta"><span>PLAY ▶</span><span data-best>NO SCORE YET</span></div>
+      </a>
+    </section>
+
+    <footer class="hub__foot">
+      <p>On a keyboard: <kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd> <kbd>↓</kbd> move, <kbd>SPACE</kbd> is the action button, <kbd>ENTER</kbd> starts and pauses, <kbd>M</kbd> toggles sound. On a phone, use the buttons on the console.</p>
+      <p>Made by <a href="https://blessingfasina.com">Blessing Fasina</a>.</p>
+    </footer>
+  </main>
+
+  <script src="/js/lcd.js"></script>
+  <script>
+    (() => {
+      const { LCD } = window.BrickArcade;
+      const ICONS = {
+        snake: ['........', '.XXXXX..', '.....X..', '.XXXXX.X', '.X......', '.X.XXXX.', '.X....X.', '......X.'],
+        breaker: ['XXXXXXXX', 'XXXXXXXX', '.XXXXXX.', '........', '........', '....X...', '........', '...XXX..'],
+        racer: ['X...X..X', 'X..XXX..', '....X..X', 'X..X.X.X', 'X.......', '..X....X', 'X.XXX..X', 'X..X...X'],
+        stack: ['........', '...XX...', '...XX...', '........', 'X....X..', 'XXX.XXXX', 'XXXXXXXX', 'XXXX.XXX'],
+      };
+      document.querySelectorAll('.card').forEach((card) => {
+        const id = card.dataset.game;
+        const lcd = new LCD(card.querySelector('canvas'), 8, 8);
+        lcd.blit(ICONS[id]);
+        lcd.draw();
+        const best = Number(localStorage.getItem('brick.hi.' + id)) || 0;
+        if (best) card.querySelector('[data-best]').textContent = 'BEST ' + best.toLocaleString();
+      });
+    })();
+  </script>
+</body>
+</html>

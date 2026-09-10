@@ -1,0 +1,10 @@
+{
+  "name": "Brick Arcade",
+  "short_name": "Brick Arcade",
+  "description": "Four classic handheld brick games. Free, no sign-up.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0e1013",
+  "theme_color": "#0e1013",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}
