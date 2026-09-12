@@ -30,6 +30,7 @@
       this.bullets = [];
       this.bombs = [];
       this.ticks = 0;
+      this.cooldown = 0;
     }
 
     move(dx) {
@@ -37,8 +38,9 @@
       this.ship = Math.max(0, Math.min(this.cols - 3, this.ship + dx));
     }
     fire() {
-      if (this.state !== 'playing' || this.bullets.length >= 1) return;
+      if (this.state !== 'playing' || this.bullets.length >= 3 || this.cooldown > 0) return;
       this.bullets.push({ x: this.ship + 1, y: this.rows - 3 });
+      this.cooldown = 4;
       this.sound.tick();
     }
 
@@ -51,6 +53,8 @@
     step() {
       this.ticks++;
       if (this.shield > 0) this.shield--;
+      if (this.cooldown > 0) this.cooldown--;
+      if (this.input.held('action') || this.input.held('up')) this.fire();
 
       for (const b of this.bullets) b.y--;
       this.bullets = this.bullets.filter((b) => b.y >= 0);
@@ -94,7 +98,7 @@
         }
         this.sound.play(this.dir > 0 ? 180 : 150, 0.04, 0, 'square', 0.04);
         if (this.aliens.some((a) => a.y >= this.rows - 3)) { this.gameOver(); return; }
-        if (this.bombs.length < 1 + Math.min(this.level, 3) && this.random() < 0.35) {
+        if (this.bombs.length < 2 + Math.min(this.level, 3) && this.random() < 0.45) {
           const a = this.aliens[this.rand(this.aliens.length)];
           this.bombs.push({ x: a.x, y: a.y + 1 });
         }

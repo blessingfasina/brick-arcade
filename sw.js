@@ -1,5 +1,5 @@
 /* Retro Classic Games — offline cache. Bump VERSION when assets change. */
-const VERSION = 'v3';
+const VERSION = 'v4';
 const CACHE = `rcg-${VERSION}`;
 const ASSETS = [
   '/', '/snake', '/breaker', '/racer', '/stack', '/pong', '/tanks', '/crossing', '/invaders', '/flappy', '/scores',
@@ -19,13 +19,18 @@ self.addEventListener('fetch', (e) => {
   const req = e.request;
   const url = new URL(req.url);
   if (req.method !== 'GET' || url.origin !== location.origin || url.pathname.startsWith('/api/')) return;
+  const isAsset = /\.(png|svg|webmanifest|ico)$/.test(url.pathname);
   e.respondWith(caches.open(CACHE).then(async (cache) => {
     const cached = await cache.match(req, { ignoreSearch: true });
-    const network = fetch(req).then((res) => { if (res.ok) cache.put(req, res.clone()); return res; }).catch(() => null);
-    if (cached) return cached;
-    const res = await network;
-    if (res) return res;
-    if (req.mode === 'navigate') return cache.match('/');
-    return Response.error();
+    if (isAsset && cached) return cached;
+    try {
+      const res = await fetch(req);
+      if (res.ok) cache.put(req, res.clone());
+      return res;
+    } catch (_) {
+      if (cached) return cached;
+      if (req.mode === 'navigate') return cache.match('/');
+      return Response.error();
+    }
   }));
 });

@@ -377,6 +377,15 @@ class Game {
       if (e.target.closest('[data-share]')) this.share();
       else if (e.target.closest('[data-again]')) this.start();
       else if (e.target.closest('[data-join]')) { if (Leaderboard.askName()) this.postScore(); }
+      else if (e.target.closest('[data-skip]')) { store.set('brick.nameAsked', '1'); this.showGameOver(); }
+    });
+    this.overlay.addEventListener('submit', (e) => {
+      if (!e.target.matches('[data-nameform]')) return;
+      e.preventDefault();
+      const name = Leaderboard.setName(e.target.elements.n.value);
+      if (!name) { e.target.elements.n.focus(); return; }
+      store.set('brick.nameAsked', '1');
+      this.showGameOver();
     });
     this.initSettings();
     this.syncMute();
@@ -452,12 +461,27 @@ class Game {
       if (token !== this.animToken) return;
     }
     this.state = 'over';
-    const line = this.newBest
+    if (this.score > 0 && !Leaderboard.name() && store.get('brick.nameAsked') !== '1') { this.showNamePrompt(); return; }
+    this.showGameOver();
+  }
+
+  scoreLine() {
+    return this.newBest
       ? `<small class="best">NEW BEST!<br><s>${fmt(this.prevHi)}</s> ${fmt(this.score)}</small>`
       : `<small>SCORE ${fmt(this.score)}</small>`;
+  }
+
+  showGameOver() {
     const join = this.score > 0 && !Leaderboard.name() ? '<button type="button" data-join>JOIN WORLD BOARD</button>' : '';
-    this.showOverlay(`GAME OVER${line}<small class="world" data-world></small><div class="overlay__btns"><button type="button" data-share>SHARE</button>${join}<button type="button" data-again>AGAIN</button></div>`);
+    this.showOverlay(`GAME OVER${this.scoreLine()}<small class="world" data-world></small><div class="overlay__btns"><button type="button" data-share>SHARE</button>${join}<button type="button" data-again>AGAIN</button></div>`);
     if (this.score > 0 && Leaderboard.name()) this.postScore();
+  }
+
+  /* First game over on a device: ask for a world-board name right on the screen. */
+  showNamePrompt() {
+    this.showOverlay(`GAME OVER${this.scoreLine()}<small>YOUR NAME FOR THE<br>WORLD BOARD</small><form class="namebox" data-nameform><input name="n" maxlength="12" placeholder="NAME" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Your name"><button type="submit">SAVE</button></form><button type="button" class="overlay__skip" data-skip>NOT NOW</button>`);
+    const input = this.overlay.querySelector('input');
+    setTimeout(() => input?.focus(), 50);
   }
 
   /* Send the finished score to the world board and show the rank it earned. */
@@ -511,7 +535,8 @@ class Game {
     open.addEventListener('click', () => { panel.hidden = !panel.hidden; if (!panel.hidden && this.state === 'playing') this.pause(); this.syncSettings(); });
     panel.querySelector('[data-close]')?.addEventListener('click', () => { panel.hidden = true; });
     panel.addEventListener('click', (e) => {
-      const s = e.target.closest('[data-skin]');
+      // Only the swatch buttons: the console element itself also carries data-skin.
+      const s = e.target.closest('.swatch');
       if (s) { store.set('brick.skin', s.dataset.skin); this.applySettings(); this.syncSettings(); }
     });
     panel.addEventListener('change', (e) => {
@@ -585,6 +610,12 @@ class Game {
 /* ---------- Offline / install ---------- */
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
   window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js').catch(() => {}); });
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (refreshing || !navigator.serviceWorker.controller) return;
+    refreshing = true;
+    if (!window.game || window.game.state !== 'playing') location.reload();
+  });
 }
 
 window.BrickArcade = { LCD, HUD, Input, Sound, Game, Stats, Leaderboard, GAMES, PALETTES, SKINS, SITE, store, segSVG, sleep, fmt, dayKey, dayNumber, dailyGame, hashSeed, mulberry32 };
