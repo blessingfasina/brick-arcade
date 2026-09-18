@@ -24,6 +24,12 @@
       this.hud.set('length', this.snake.length, 3);
     }
 
+    startAt(lv) {
+      this.level = lv;
+      this.interval = Math.max(70, this.baseInterval - (lv - 1) * 20);
+      this.hud.set('level', lv, 2);
+    }
+
     /* Hold the action button for turbo. */
     tickInterval() { return this.input.held('action') ? this.interval * 0.45 : this.interval; }
 

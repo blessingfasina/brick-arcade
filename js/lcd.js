@@ -119,6 +119,60 @@ class LCD {
   }
 }
 
+/* ---------- Mascot: the little LCD character in the side panel ---------- */
+const MASCOT = {
+  stand: ['....XXXX....', '...XXXXXX...', '..XX....XX..', '..X.X..X.X..', '..X......X..', '...X.XX.X...',
+          '....XXXX....', '...XXXXXX...', '..X.XXXX.X..', '....X..X....', '....X..X....', '...XX..XX...'],
+  run1:  ['.....XXXX...', '....XXXXXX..', '...XX....XX.', '...X..X.X.X.', '...X......X.', '....X.XX.X..',
+          '.....XXXX...', '..X.XXXXX...', '...XXXXXX.X.', '....XX..XX..', '...XX....X..', '..XX.....XX.'],
+  run2:  ['.....XXXX...', '....XXXXXX..', '...XX....XX.', '...X..X.X.X.', '...X......X.', '....X.XX.X..',
+          '.....XXXX...', '....XXXXXX..', '...X.XXXX.X.', '.....XXX....', '.....X.X....', '....XX.XX...'],
+  cheer: ['....XXXX....', '...XXXXXX...', '..XX....XX..', 'X.X.X..X.X.X', 'X.X......X.X', '.X.X.XX.X.X.',
+          '.X..XXXX..X.', '..XXXXXXXX..', '....XXXX....', '....X..X....', '...XX..XX...', '............'],
+  rest:  ['............', '....XXXX....', '...XXXXXX...', '..XX....XX..', '..X......X..', '..X.XX.XX.X.',
+          '...X....X...', '....XXXX....', '...XXXXXX...', '..X.XXXX.X..', '...XXXXXXXX.', '...XX...XX..'],
+  down:  ['............', '............', '............', '............', '............', '............',
+          '..XXXX......', '.X....X.....', '.X.X.XXXXXX.', '.X..X.XXXX.X', '..XXXX...X.X', 'XXXXXXXXXXXX'],
+};
+class Mascot {
+  constructor(canvas, palette) {
+    this.canvas = canvas;
+    this.ctx = canvas.getContext('2d');
+    this.palette = palette;
+    this.px = 4;
+    canvas.width = canvas.height = 12 * this.px;
+    this.mode = 'idle';
+    this.temp = null;
+    this.until = 0;
+    this.frame = null;
+    this.ghost = new Set();
+    for (const f of Object.values(MASCOT)) f.forEach((row, y) => [...row].forEach((c, x) => { if (c === 'X') this.ghost.add(`${x},${y}`); }));
+  }
+  set(mode, ms = 0) {
+    if (ms) { this.temp = mode; this.until = performance.now() + ms; }
+    else { this.mode = mode; this.until = 0; }
+  }
+  pick(t, speed) {
+    const mode = this.until > t ? this.temp : this.mode;
+    if (mode === 'run') return Math.floor(t / Math.max(90, 240 - speed * 14)) % 2 ? 'run1' : 'run2';
+    if (mode === 'idle') return t % 2600 < 420 ? 'cheer' : 'stand';
+    return mode;
+  }
+  update(t, speed) {
+    const f = this.pick(t, speed);
+    const pal = this.palette();
+    if (f === this.frame && pal === this.pal) return;
+    this.frame = f;
+    this.pal = pal;
+    const g = this.ctx, p = this.px;
+    g.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    g.fillStyle = pal.off;
+    for (const k of this.ghost) { const [x, y] = k.split(',').map(Number); g.fillRect(x * p, y * p, p - 1, p - 1); }
+    g.fillStyle = pal.on;
+    MASCOT[f].forEach((row, y) => [...row].forEach((c, x) => { if (c === 'X') g.fillRect(x * p, y * p, p - 1, p - 1); }));
+  }
+}
+
 /* ---------- Seven-segment digits for the HUD ---------- */
 const SEG_ON = {
   '0': 'abcdef', '1': 'bc', '2': 'abdeg', '3': 'abcdg', '4': 'bcfg',
@@ -196,7 +250,7 @@ class Input {
     let lastTap = 0;
     document.addEventListener('touchend', (e) => {
       const now = Date.now();
-      if (now - lastTap < 400 && !e.target.closest('a, input, label, .settings')) e.preventDefault();
+      if (now - lastTap < 400 && !e.target.closest('a, input, label, .settings, .mini')) e.preventDefault();
       lastTap = now;
     }, { passive: false });
     document.addEventListener('gesturestart', (e) => e.preventDefault(), { passive: false });
@@ -218,7 +272,7 @@ class Input {
   }
 
   on(name, fn) { (this.handlers[name] ||= []).push(fn); }
-  emit(name) { (this.handlers[name] || []).forEach((fn) => fn()); }
+  emit(name, repeat = false) { (this.handlers[name] || []).forEach((fn) => fn(repeat)); }
   held(name) { return this.down.has(name); }
 
   press(name) {
@@ -228,7 +282,7 @@ class Input {
     this.emit(name);
     if (this.repeatable.has(name)) {
       const t = setTimeout(() => {
-        this.timers.set(name, setInterval(() => this.emit(name), 75));
+        this.timers.set(name, setInterval(() => this.emit(name, true), 75));
       }, 200);
       this.timers.set(name, t);
     }
@@ -353,6 +407,12 @@ class Game {
     this.day = dayKey();
     this.rng = this.daily ? mulberry32(hashSeed(`${this.day}:${id}`)) : null;
     this.hiKey = this.daily ? `brick.daily.${id}.${this.day}` : `brick.hi.${id}`;
+    // Like the real handheld: pick a starting LEVEL and a SPEED before you press start.
+    // The daily challenge is locked to 1 / 1 so everyone plays the same game.
+    const pick = (k) => Math.max(1, Math.min(10, Number(store.get(k)) || 1));
+    this.startLevel = this.daily ? 1 : pick(`brick.lv.${id}`);
+    this.speed = this.daily ? 1 : pick(`brick.sp.${id}`);
+    this.overAt = 0;
 
     this.lcd = new LCD(document.getElementById('lcd'), cols, rows);
     this.hud = new HUD(document.querySelector('.hud'));
@@ -372,6 +432,12 @@ class Game {
     this.input.on('pause', () => this.togglePause());
     this.input.on('action', () => { if (this.state === 'idle' || this.state === 'over') this.start(); });
     this.input.on('mute', () => this.toggleMute());
+    this.input.on('left', (rep) => this.menu('prev', rep));
+    this.input.on('right', (rep) => this.menu('next', rep));
+    this.input.on('up', (rep) => this.menu('level', rep));
+    this.input.on('down', (rep) => this.menu('speed', rep));
+    const mc = document.querySelector('.mascot');
+    this.mascot = mc ? new Mascot(mc, () => this.lcd.palette) : null;
     document.querySelector('[data-mute]')?.addEventListener('click', () => this.toggleMute());
     this.overlay.addEventListener('click', (e) => {
       if (e.target.closest('[data-share]')) this.share();
@@ -399,8 +465,8 @@ class Game {
       document.title = `Daily challenge: ${document.title}`;
     }
     window.game = this;
-    this.reset();
-    this.showOverlay(this.daily ? 'DAILY<br>CHALLENGE<small>PRESS START</small>' : 'PRESS<br>START');
+    this.prepare();
+    this.showMenu();
     this.hud.set('hi', this.hi);
     this.hud.set('score', 0);
     requestAnimationFrame((t) => this.frame(t));
@@ -411,6 +477,50 @@ class Game {
   step() {}
   draw() {}
   tickInterval() { return this.interval; }
+  /* Jump straight to a starting level. Games override this to rebuild what depends on it. */
+  startAt(lv) { this.level = lv; this.hud.set('level', lv, 2); }
+
+  /* --- level / speed / game select, before a game starts --- */
+  prepare() {
+    this.reset();
+    this.startAt(this.startLevel);
+    this.seenLevel = this.level;
+    this.hud.set('speed', this.speed, 2);
+  }
+  speedFactor() { return 1 - (this.speed - 1) * 0.06; }
+  scoreMult() { return 1 + (this.speed - 1) * 0.1; }
+  inMenu() {
+    if (this.state === 'idle') return true;
+    return this.state === 'over' && performance.now() - this.overAt > 700 && !this.overlay.querySelector('[data-nameform]');
+  }
+  menu(kind, repeat) {
+    if (repeat || !this.inMenu() || this.daily) return;
+    if (kind === 'prev' || kind === 'next') {
+      const i = GAMES.findIndex((g) => g.id === this.id);
+      const next = GAMES[(i + (kind === 'next' ? 1 : GAMES.length - 1)) % GAMES.length];
+      location.href = '/' + next.id;
+      return;
+    }
+    if (kind === 'level') { this.startLevel = this.startLevel % 10 + 1; store.set(`brick.lv.${this.id}`, this.startLevel); }
+    else { this.speed = this.speed % 10 + 1; store.set(`brick.sp.${this.id}`, this.speed); }
+    this.sound.tick();
+    this.state = 'idle';
+    this.prepare();
+    this.showMenu();
+  }
+  showMenu() {
+    this.mascot?.set('idle');
+    this.setIcon('pause', false);
+    if (this.daily) {
+      this.showOverlay(`<div class="menu"><b>DAILY<br>CHALLENGE</b><small>LEVEL 1 · SPEED 1<br>SAME GAME FOR EVERYONE</small><small class="press">PRESS START</small></div>`, 'overlay--menu');
+      return;
+    }
+    this.showOverlay(`<div class="menu"><b>${this.meta.name.toUpperCase()}</b>`
+      + `<div class="menu__row"><span>▲ LEVEL</span><em>${this.startLevel}</em></div>`
+      + `<div class="menu__row"><span>▼ SPEED</span><em>${this.speed}</em></div>`
+      + `<small>◀ ▶ CHANGE GAME</small><small class="press">PRESS START</small></div>`, 'overlay--menu');
+  }
+  setIcon(name, on) { document.querySelectorAll(`[data-icon="${name}"]`).forEach((el) => el.classList.toggle('is-on', on)); }
 
   /* --- randomness: seeded on daily challenge days --- */
   random() { return this.rng ? this.rng() : Math.random(); }
@@ -433,17 +543,21 @@ class Game {
     this.newBest = false;
     if (this.daily) this.rng = mulberry32(hashSeed(`${this.day}:${this.id}`));
     this.hud.set('score', 0);
-    this.reset();
+    this.prepare();
     this.acc = 0;
     this.state = 'playing';
     this.hideOverlay();
+    this.setIcon('pause', false);
+    this.mascot?.set('run');
     this.sound.boot();
   }
-  pause() { this.state = 'paused'; this.showOverlay('PAUSED'); }
-  resume() { this.state = 'playing'; this.acc = 0; this.hideOverlay(); }
+  pause() { this.state = 'paused'; this.showOverlay('PAUSED'); this.setIcon('pause', true); this.mascot?.set('rest'); }
+  resume() { this.state = 'playing'; this.acc = 0; this.hideOverlay(); this.setIcon('pause', false); this.mascot?.set('run'); }
 
   async gameOver() {
     this.state = 'anim';
+    this.mascot?.set('down');
+    this.setIcon('pause', false);
     this.sound.over();
     this.buzz([60, 40, 60]);
     Stats.record(this.id, this.score);
@@ -461,6 +575,7 @@ class Game {
       if (token !== this.animToken) return;
     }
     this.state = 'over';
+    this.overAt = performance.now();
     if (this.score > 0 && !Leaderboard.name() && store.get('brick.nameAsked') !== '1') { this.showNamePrompt(); return; }
     this.showGameOver();
   }
@@ -499,13 +614,14 @@ class Game {
   }
 
   addScore(n) {
+    if (n > 0) n = Math.round(n * this.scoreMult());
     this.score += n;
     if (this.score > this.hi) {
       const first = !this.newBest && this.prevHi > 0;
       this.hi = this.score;
       store.set(this.hiKey, this.hi);
       this.hud.set('hi', this.hi);
-      if (first) { this.newBest = true; this.sound.best(); this.hud.flash(); this.buzz([30, 30, 30]); }
+      if (first) { this.newBest = true; this.sound.best(); this.hud.flash(); this.buzz([30, 30, 30]); this.mascot?.set('cheer', 1600); }
       else if (!this.newBest) this.newBest = true;
     }
     this.hud.set('score', this.score);
@@ -577,12 +693,16 @@ class Game {
     if (this.state === 'playing') {
       this.acc += dt;
       let guard = 0;
-      while (this.acc >= this.tickInterval() && guard++ < 5) {
-        this.acc -= this.tickInterval();
+      let iv = this.tickInterval() * this.speedFactor();
+      while (this.acc >= iv && guard++ < 5) {
+        this.acc -= iv;
         this.step();
         if (this.state !== 'playing') { this.acc = 0; break; }
+        iv = this.tickInterval() * this.speedFactor();
       }
+      if (this.level > this.seenLevel) { this.seenLevel = this.level; this.mascot?.set('cheer', 1400); }
     }
+    this.mascot?.update(t, this.speed);
     if (this.state !== 'anim') {
       this.lcd.clear();
       this.draw();
@@ -592,17 +712,15 @@ class Game {
   }
 
   /* --- helpers --- */
-  showOverlay(html) { this.overlay.innerHTML = html; this.overlay.hidden = false; }
+  showOverlay(html, cls = '') { this.overlay.className = cls ? `overlay ${cls}` : 'overlay'; this.overlay.innerHTML = html; this.overlay.hidden = false; }
   hideOverlay() { this.overlay.hidden = true; }
   buzz(pattern) { try { navigator.vibrate?.(pattern); } catch (_) { /* ignore */ } }
   blink(period = 250) { return Math.floor(performance.now() / period) % 2 === 0; }
   toggleMute() { this.sound.toggle(); this.syncMute(); }
   syncMute() {
     const b = document.querySelector('[data-mute]');
-    if (b) {
-      b.textContent = this.sound.muted ? 'SOUND OFF' : 'SOUND ON';
-      b.setAttribute('aria-pressed', String(!this.sound.muted));
-    }
+    if (b) b.setAttribute('aria-pressed', String(!this.sound.muted));
+    this.setIcon('sound', !this.sound.muted);
     this.syncSettings();
   }
 }

@@ -20,18 +20,24 @@
       this.enemies = [];
       this.wall = 0;
       this.level = 1;
+      this.levelBase = 0;
       this.passed = 0;
       this.lives = 3;
       this.hidden = false;
       this.interval = this.baseInterval;
       this.hud.set('level', this.level, 2);
       this.hud.set('lives', this.lives, 1);
-      this.hud.set('speed', this.speedValue(), 2);
+    }
+
+    startAt(lv) {
+      this.levelBase = lv - 1;
+      this.level = lv;
+      this.interval = Math.max(60, this.baseInterval - (lv - 1) * 12);
+      this.hud.set('level', lv, 2);
     }
 
     /* Hold the action button to floor it. */
     tickInterval() { return this.input.held('action') ? this.interval * 0.4 : this.interval; }
-    speedValue() { return Math.round(1000 / this.tickInterval()); }
 
     move(dx) {
       if (this.state !== 'playing') return;
@@ -68,14 +74,13 @@
         this.passed += gone;
         this.addScore(gone * (this.input.held('action') ? 20 : 10) * this.level);
         this.sound.tick();
-        if (Math.floor(this.passed / 10) + 1 > this.level) {
-          this.level = Math.floor(this.passed / 10) + 1;
+        if (Math.floor(this.passed / 10) + 1 + this.levelBase > this.level) {
+          this.level = Math.floor(this.passed / 10) + 1 + this.levelBase;
           this.interval = Math.max(60, this.baseInterval - (this.level - 1) * 12);
           this.hud.set('level', this.level, 2);
           this.sound.level();
         }
       }
-      this.hud.set('speed', this.speedValue(), 2);
       if (this.collides()) this.crash();
     }
 

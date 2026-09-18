@@ -37,11 +37,26 @@
       this.bag = [];
       this.lines = 0;
       this.level = 1;
+      this.levelBase = 0;
       this.interval = this.baseInterval;
       this.next = this.takeFromBag();
       this.spawn();
       this.hud.set('level', this.level, 2);
       this.hud.set('lines', this.lines, 3);
+    }
+
+    /* Higher starting levels drop faster and begin with rows of rubble, one per level. */
+    startAt(lv) {
+      this.levelBase = lv - 1;
+      this.level = lv;
+      this.interval = Math.max(80, this.baseInterval - (lv - 1) * 45);
+      this.hud.set('level', lv, 2);
+      const rows = Math.min(lv - 1, 8);
+      for (let i = 0; i < rows; i++) {
+        const row = this.board[this.rows - 1 - i];
+        for (let x = 0; x < this.cols; x++) row[x] = this.random() < 0.6 ? 1 : 0;
+        row[this.rand(this.cols)] = 0;
+      }
     }
 
     takeFromBag() {
@@ -126,7 +141,7 @@
         this.lines += full.length;
         this.addScore(LINE_SCORE[full.length] * this.level);
         this.hud.set('lines', this.lines, 3);
-        const level = Math.floor(this.lines / 10) + 1;
+        const level = Math.floor(this.lines / 10) + 1 + this.levelBase;
         if (level > this.level) {
           this.level = level;
           this.interval = Math.max(80, this.baseInterval - (this.level - 1) * 45);

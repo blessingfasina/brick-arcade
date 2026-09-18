@@ -1,5 +1,5 @@
 /* Retro Classic Games — offline cache. Bump VERSION when assets change. */
-const VERSION = 'v4';
+const VERSION = 'v5';
 const CACHE = `rcg-${VERSION}`;
 const ASSETS = [
   '/', '/snake', '/breaker', '/racer', '/stack', '/pong', '/tanks', '/crossing', '/invaders', '/flappy', '/scores',

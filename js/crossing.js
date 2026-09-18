@@ -26,6 +26,12 @@
       this.hud.set('lives', this.lives, 1);
     }
 
+    startAt(lv) {
+      this.level = lv;
+      this.hud.set('level', lv, 2);
+      this.buildLanes();
+    }
+
     spawnFrog() { this.frog = { x: 4, y: this.rows - 1 }; this.maxY = this.rows - 1; }
 
     buildLanes() {

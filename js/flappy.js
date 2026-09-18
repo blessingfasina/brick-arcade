@@ -25,6 +25,12 @@
       this.hud.set('pipes', 0, 3);
     }
 
+    startAt(lv) {
+      this.level = lv;
+      this.interval = Math.max(85, this.baseInterval - (lv - 1) * 8);
+      this.hud.set('level', lv, 2);
+    }
+
     flap() {
       if (this.state !== 'playing') return;
       this.started = true;

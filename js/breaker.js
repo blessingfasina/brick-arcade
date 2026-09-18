@@ -30,6 +30,12 @@
       this.hud.set('lives', this.lives, 1);
     }
 
+    startAt(lv) {
+      this.level = lv;
+      this.hud.set('level', lv, 2);
+      this.loadLevel();
+    }
+
     loadLevel() {
       this.bricks = new Set();
       const layout = LAYOUTS[(this.level - 1) % LAYOUTS.length];

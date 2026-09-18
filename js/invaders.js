@@ -22,6 +22,12 @@
       this.hud.set('lives', this.lives, 1);
     }
 
+    startAt(lv) {
+      this.level = lv;
+      this.hud.set('level', lv, 2);
+      this.newWave();
+    }
+
     newWave() {
       this.aliens = [];
       const top = 1 + Math.min(this.level - 1, 5);

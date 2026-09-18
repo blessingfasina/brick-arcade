@@ -27,6 +27,12 @@
       this.hud.set('level', this.level, 2);
     }
 
+    startAt(lv) {
+      this.level = lv;
+      this.interval = Math.max(70, this.baseInterval - (lv - 1) * 10);
+      this.hud.set('level', lv, 2);
+    }
+
     newBall() {
       this.ball = { x: this.paddle + 1, y: this.rows - 2 };
       this.vel = { x: this.random() < 0.5 ? -0.6 : 0.6, y: -1 };

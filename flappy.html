@@ -30,13 +30,9 @@
 </head>
 <body class="page-game">
   <main class="console" style="--cols:10;--rows:20">
-    <header class="console__top">
-      <a class="back" href="/">◀ ALL GAMES</a>
-      <h1 class="console__title">FLAPPY<span class="console__mode" data-mode hidden>· DAILY</span></h1>
-      <div class="console__chips"><button class="chip" data-mute type="button" aria-pressed="true">SOUND ON</button><button class="chip" data-settings type="button" aria-label="Settings">⚙</button></div>
-    </header>
-
-    <section class="screen" aria-label="Game screen">
+    <section class="frame" aria-label="Game screen">
+      <h1 class="frame__brand"><span class="frame__name">FLAPPY</span><span class="console__mode" data-mode hidden>· DAILY</span></h1>
+      <div class="screen">
       <div class="screen__inner">
         <div class="lcd-wrap">
           <canvas id="lcd" class="lcd" width="200" height="400" aria-label="Flappy playfield"></canvas>
@@ -45,23 +41,32 @@
         <aside class="hud" aria-label="Score panel">
         <div class="hud__item"><span>SCORE</span><div class="seg" data-hud="score"></div></div>
         <div class="hud__item"><span>HI-SCORE</span><div class="seg" data-hud="hi"></div></div>
-        <div class="hud__item"><span>LEVEL</span><div class="seg" data-hud="level"></div></div>
         <div class="hud__item"><span>PIPES</span><div class="seg" data-hud="pipes"></div></div>
+        <div class="hud__foot">
+          <div class="hud__mini"><span>LEVEL</span><div class="seg seg--sm" data-hud="level"></div></div>
+          <div class="hud__mini"><span>SPEED</span><div class="seg seg--sm" data-hud="speed"></div></div>
+          <canvas class="mascot" width="48" height="48" aria-hidden="true"></canvas>
+          <div class="lcd-icons"><svg class="lcd-icon" data-icon="sound" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 2.5 14 1v9.6a2.4 2.4 0 1 1-1.6-2.3V4.2L7.6 5.1v7.5a2.4 2.4 0 1 1-1.6-2.3z"/></svg><svg class="lcd-icon" data-icon="pause" viewBox="0 0 18 16" aria-hidden="true"><path d="M5 0h1.4v3H5zM8 0h1.4v3H8zM1 5h12v4.5A4.5 4.5 0 0 1 8.5 14h-3A4.5 4.5 0 0 1 1 9.5zM13 6h1.5a2.5 2.5 0 0 1 0 5H13V9.4h1.5a.9.9 0 0 0 0-1.8H13zM0 15h14v1H0z"/></svg><span class="lcd-text" data-icon="pause">PAUSE</span></div>
+        </div>
         </aside>
       </div>
+      </div>
     </section>
+    <div class="gloss" aria-hidden="true"></div>
 
     <section class="controls" aria-label="Controls">
       <div class="dpad">
-        <button class="btn btn--dir up" data-btn="up" type="button" aria-label="Up">▲</button>
-        <button class="btn btn--dir left" data-btn="left" type="button" aria-label="Left">◀</button>
-        <button class="btn btn--dir right" data-btn="right" type="button" aria-label="Right">▶</button>
-        <button class="btn btn--dir down" data-btn="down" type="button" aria-label="Down">▼</button>
+        <div class="dkey up"><button class="btn btn--dir" data-btn="up" type="button" aria-label="Up, or level before starting">▲</button><span>UP / LEVEL</span></div>
+        <div class="dkey left"><button class="btn btn--dir" data-btn="left" type="button" aria-label="Left, or previous game before starting">◀</button><span>LEFT<br>PREV GAME</span></div>
+        <div class="dkey right"><button class="btn btn--dir" data-btn="right" type="button" aria-label="Right, or next game before starting">▶</button><span>RIGHT<br>NEXT GAME</span></div>
+        <div class="dkey down"><button class="btn btn--dir" data-btn="down" type="button" aria-label="Down, or speed before starting">▼</button><span>DOWN / SPEED</span></div>
       </div>
       <div class="actions">
-        <div class="pills">
-          <button class="pill" data-btn="start" type="button">START</button>
-          <button class="pill" data-btn="pause" type="button">PAUSE</button>
+        <div class="minis">
+          <div class="mini"><button class="mini__btn" data-btn="start" type="button" aria-label="Start or pause"></button><span>START<br>PAUSE</span></div>
+          <div class="mini"><button class="mini__btn" data-mute type="button" aria-label="Sound" aria-pressed="true"></button><span>SOUND</span></div>
+          <div class="mini"><button class="mini__btn" data-settings type="button" aria-label="Settings"></button><span>SETTING</span></div>
+          <div class="mini"><a class="mini__btn" href="/" aria-label="Exit to the games menu"></a><span>EXIT<br>MENU</span></div>
         </div>
         <button class="btn btn--action" data-btn="action" type="button" aria-label="FLAP"></button>
         <span class="btn-label">FLAP</span>
@@ -77,7 +82,7 @@
       <button type="button" class="settings__close" data-close>DONE</button>
     </div>
 
-    <p class="hint">Arrows / WASD move · Space flaps · Enter starts and pauses · M toggles sound</p>
+    <p class="hint">Arrows / WASD move · Space flaps · Enter starts and pauses · M toggles sound · Before starting: ▲ level, ▼ speed, ◀ ▶ change game</p>
   </main>
 
   <section class="about">
@@ -87,6 +92,7 @@
         <li>Fly through the gap in each pipe. Every pipe you pass scores points.</li>
         <li>Every five pipes the level goes up, the pipes come faster and the gaps get tighter.</li>
         <li>One touch of a pipe, the ceiling or the floor and it is over. Press START to go again.</li>
+        <li>Before you press start, Up picks the starting level and Down the speed, from 1 to 10. Higher speeds score more points. Left and Right switch to the previous or next game.</li>
     </ol>
     <h2>About this game</h2>
     <p>Flappy is the one that ruins lunch breaks. On the brick screen the bird is two cells, the pipes are two columns wide, and the gap shrinks from six rows to four as you level up. The trick is small, early taps rather than big rescues: keep the bird in the middle of the screen and only flap when it starts to dip.</p>
