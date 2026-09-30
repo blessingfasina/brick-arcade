@@ -58,7 +58,8 @@
       const body = eats ? this.snake : this.snake.slice(0, -1);
       const outside = next.x < 0 || next.x >= this.cols || next.y < 0 || next.y >= this.rows;
       if (outside || body.some((s) => s.x === next.x && s.y === next.y)) {
-        this.sound.lose();
+        this.sound.crash();
+        this.lcd.burst(this.snake.slice(0, 6).map((p) => [p.x, p.y, 1]), 0.9);
         this.gameOver();
         return;
       }
@@ -66,7 +67,8 @@
       if (eats) {
         this.eaten++;
         this.addScore(10 * this.level);
-        this.sound.score();
+        this.sound.eat();
+        this.lcd.burst([[next.x, next.y, 2]], 0.6);
         this.buzz(15);
         this.hud.set('length', this.snake.length, 3);
         if (this.eaten % 5 === 0) {
@@ -82,8 +84,8 @@
     }
 
     draw() {
-      for (const s of this.snake) this.lcd.set(s.x, s.y, 1);
-      if (this.food && (this.state !== 'playing' || this.blink(220))) this.lcd.set(this.food.x, this.food.y, 1);
+      this.snake.forEach((s, i) => this.lcd.set(s.x, s.y, i === 0 ? 9 : 1));
+      if (this.food && (this.state !== 'playing' || this.blink(220))) this.lcd.set(this.food.x, this.food.y, 2);
     }
   }
 

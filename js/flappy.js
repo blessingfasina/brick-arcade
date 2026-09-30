@@ -35,7 +35,7 @@
       if (this.state !== 'playing') return;
       this.started = true;
       this.vy = -1.25;
-      this.sound.tick();
+      this.sound.flap();
     }
 
     gapSize() { return Math.max(4, 6 - Math.floor((this.level - 1) / 3)); }
@@ -80,17 +80,23 @@
       return false;
     }
 
-    die() { this.sound.lose(); this.buzz(60); this.gameOver(); }
+    die() {
+      this.sound.crash();
+      const by = Math.max(0, Math.min(this.rows - 1, Math.round(this.y)));
+      this.lcd.burst([[BIRD_X, by, 3], [BIRD_X - 1, by, 3]], 1.2);
+      this.buzz(60);
+      this.gameOver();
+    }
 
     draw() {
       for (const p of this.pipes) {
         for (let x = p.x; x <= p.x + 1; x++) {
-          for (let y = 0; y < this.rows; y++) if (y < p.gapY || y >= p.gapY + p.gap) this.lcd.set(x, y, 1);
+          for (let y = 0; y < this.rows; y++) if (y < p.gapY || y >= p.gapY + p.gap) this.lcd.set(x, y, 5);
         }
       }
       const by = Math.round(this.y);
-      this.lcd.set(BIRD_X, by, 1);
-      this.lcd.set(BIRD_X - 1, this.vy < 0 && this.started ? by - 1 : by, 1);
+      this.lcd.set(BIRD_X, by, 3);
+      this.lcd.set(BIRD_X - 1, this.vy < 0 && this.started ? by - 1 : by, 3);
     }
   }
 

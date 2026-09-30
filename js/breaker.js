@@ -67,10 +67,12 @@
     }
 
     hasBrick(x, y) { return this.bricks.has(`${x},${y}`); }
+    brickCode(y) { return [2, 6, 3, 5, 4, 7][(y - 1) % 6]; }
     breakBrick(x, y) {
       this.bricks.delete(`${x},${y}`);
       this.addScore(10 * this.level);
-      this.sound.hit();
+      this.sound.brick();
+      this.lcd.burst([[x, y, this.brickCode(y)]], 0.9);
     }
 
     step() {
@@ -78,8 +80,8 @@
       const b = this.ball, v = this.vel;
 
       // Walls and ceiling.
-      if (b.x + v.x < 0 || b.x + v.x >= this.cols) { v.x = -v.x; this.sound.tick(); }
-      if (b.y + v.y < 0) { v.y = 1; this.sound.tick(); }
+      if (b.x + v.x < 0 || b.x + v.x >= this.cols) { v.x = -v.x; this.sound.wall(); }
+      if (b.y + v.y < 0) { v.y = 1; this.sound.wall(); }
 
       // Bricks: vertical face first, then horizontal, then the corner.
       let hit = false;
@@ -125,6 +127,7 @@
       this.lives--;
       this.hud.set('lives', Math.max(0, this.lives), 1);
       this.sound.lose();
+      this.lcd.shake(0.7);
       this.buzz(50);
       if (this.lives <= 0) { this.gameOver(); return; }
       this.resetBall();
@@ -133,10 +136,10 @@
     draw() {
       for (const key of this.bricks) {
         const [x, y] = key.split(',').map(Number);
-        this.lcd.set(x, y, 1);
+        this.lcd.set(x, y, this.brickCode(y));
       }
-      for (let i = 0; i < PADDLE; i++) this.lcd.set(this.paddle + i, this.rows - 1, 1);
-      if (this.launched || this.state !== 'playing' || this.blink(300)) this.lcd.set(this.ball.x, this.ball.y, 1);
+      for (let i = 0; i < PADDLE; i++) this.lcd.set(this.paddle + i, this.rows - 1, 4);
+      if (this.launched || this.state !== 'playing' || this.blink(300)) this.lcd.set(this.ball.x, this.ball.y, 9);
     }
   }
 

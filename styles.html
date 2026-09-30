@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Screen Styles: 3D Bricks, Neon Arcade and Classic LCD | Retro Classic Games</title>
+  <meta name="description" content="Play every Retro Classic game in 3D Bricks, Neon Arcade or Classic LCD. See all three screen styles side by side, hear their sounds, and pick the one you like.">
+  <link rel="canonical" href="https://retroclassic.games/styles">
+  <meta name="theme-color" content="#12072b">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Retro Classic Games">
+  <meta property="og:title" content="Screen Styles: 3D Bricks, Neon Arcade and Classic LCD | Retro Classic Games">
+  <meta property="og:description" content="See all three screen styles side by side, hear their sounds, and pick the one you like.">
+  <meta property="og:url" content="https://retroclassic.games/styles">
+  <meta property="og:image" content="https://retroclassic.games/og-image.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="page-hub page-styles">
+  <main class="hub sp">
+    <header>
+      <p class="hero__kicker"><a href="/">◀ ALL GAMES</a> · SCREEN STYLES</p>
+      <h1 class="sp__title"><span class="a">3D Bricks</span>, <span class="b">Neon Arcade</span> or Classic LCD</h1>
+      <p class="sp__lede">Every game on Retro Classic Games can be played in three screen styles, and each one has its own sound. All three screens below run the same demo, move for move. 3D Bricks is the default. Pick the one you like and it applies to all nine games.</p>
+    </header>
+
+    <div class="sp__bar" role="group" aria-label="Demo controls">
+      <div class="sp__group">
+        <span>GAME</span>
+        <div class="sp__seg" role="radiogroup" aria-label="Game">
+          <input type="radio" name="game" id="g-stack" value="stack" checked><label for="g-stack">BRICK STACK</label>
+          <input type="radio" name="game" id="g-snake" value="snake"><label for="g-snake">SNAKE</label>
+          <input type="radio" name="game" id="g-breaker" value="breaker"><label for="g-breaker">BREAKER</label>
+        </div>
+      </div>
+      <div class="sp__group">
+        <span>TRY AN EFFECT</span>
+        <div class="sp__seg">
+          <button type="button" class="sp__btn" id="fx-burst">SHATTER</button>
+          <button type="button" class="sp__btn" id="fx-flash">LEVEL UP</button>
+          <button type="button" class="sp__btn" id="fx-shake">CRASH</button>
+        </div>
+      </div>
+      <div class="sp__group">
+        <span>TILT</span>
+        <div class="sp__seg" role="radiogroup" aria-label="Tilt">
+          <input type="radio" name="tilt" id="t-wobble" value="wobble" checked><label for="t-wobble">WOBBLE</label>
+          <input type="radio" name="tilt" id="t-pointer" value="pointer"><label for="t-pointer">FOLLOW POINTER</label>
+          <input type="radio" name="tilt" id="t-flat" value="flat"><label for="t-flat">FLAT</label>
+        </div>
+      </div>
+      <div class="sp__group">
+        <span>HEAR <b data-style-name>3D Bricks</b></span>
+        <div class="sp__seg"><button type="button" class="sp__btn sp__btn--sound" id="fx-sound" aria-pressed="false">SOUND OFF</button></div>
+      </div>
+    </div>
+
+    <section class="sp__stage" id="stage" aria-label="Screen styles">
+      <article class="sp__col sp__col--3d">
+        <span class="sp__tag">3D BRICKS · DEFAULT</span>
+        <div class="sp__view"><div class="sp__device" data-tilt><canvas id="c-3d" aria-label="3D Bricks screen"></canvas><div class="sp__glare"></div></div></div>
+        <p class="sp__score" data-score>SCORE 000000</p>
+        <ul class="sp__notes">
+          <li><b>Real depth.</b> Every lit cell stands up as a brick with sides and a shadow.</li>
+          <li><b>Bouncy.</b> New bricks pop in, and cleared rows shatter into falling pieces.</li>
+          <li><b>Full arcade sound.</b> Crunches, lasers and explosions with real weight.</li>
+        </ul>
+        <button type="button" class="sp__use" data-use="3d" aria-pressed="false">USE THIS STYLE</button>
+      </article>
+
+      <article class="sp__col sp__col--neon">
+        <span class="sp__tag">NEON ARCADE</span>
+        <div class="sp__view"><div class="sp__device" data-tilt><canvas id="c-neon" aria-label="Neon Arcade screen"></canvas><div class="sp__scan"></div><div class="sp__glare"></div></div></div>
+        <p class="sp__score" data-score>SCORE 000000</p>
+        <ul class="sp__notes">
+          <li><b>Glowing tubes.</b> Each piece gets its own colour, like an arcade cabinet.</li>
+          <li><b>Afterglow.</b> Anything that moves leaves a short fading trail.</li>
+          <li><b>Synth sound.</b> The same effects through a sweeping filter and an echo.</li>
+        </ul>
+        <button type="button" class="sp__use" data-use="neon" aria-pressed="false">USE THIS STYLE</button>
+      </article>
+
+      <article class="sp__col sp__col--classic">
+        <span class="sp__tag">CLASSIC LCD</span>
+        <div class="sp__view"><div class="sp__device"><canvas id="c-classic" aria-label="Classic LCD screen"></canvas></div></div>
+        <p class="sp__score" data-score>SCORE 000000</p>
+        <ul class="sp__notes">
+          <li><b>The original.</b> Flat grey cells, exactly like the little handheld.</li>
+          <li><b>Piezo beeps.</b> Square-wave sounds like its tiny speaker, no effects.</li>
+        </ul>
+        <button type="button" class="sp__use" data-use="classic" aria-pressed="false">USE THIS STYLE</button>
+      </article>
+    </section>
+
+    <section class="sp__how">
+      <h2>HOW SCREEN STYLES WORK</h2>
+      <ul>
+        <li><b>One choice for every game.</b> The style you pick here, or under SETTING on any game, applies to all nine games on this device.</li>
+        <li><b>Only the look and sound change.</b> Gameplay, levels, daily challenges and the world leaderboard are identical in every style.</li>
+        <li><b>The screen leans with your phone</b> in 3D Bricks and Neon Arcade. On iPhone, turn on "Tilt with phone" under SETTING to allow it.</li>
+        <li><b>Sound follows the style.</b> Volume and mute are under SETTING and the SOUND button on every console. An iPhone on silent mutes website sounds.</li>
+      </ul>
+      <p class="sp__cta"><a class="cta" href="/stack">▶ PLAY BRICK STACK</a> <a class="sp__all" href="/">SEE ALL NINE GAMES</a></p>
+    </section>
+
+    <footer class="hub__foot">
+      <p>Made by <a href="https://blessingfasina.com">Blessing Fasina</a>.</p>
+    </footer>
+  </main>
+
+  <script src="/js/lcd.js"></script>
+  <script src="/js/styles.js"></script>
+</body>
+</html>

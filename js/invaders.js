@@ -39,6 +39,8 @@
       this.cooldown = 0;
     }
 
+    alienCode(a) { return [2, 7, 4][Math.floor(a.y / 2) % 3]; }
+
     move(dx) {
       if (this.state !== 'playing') return;
       this.ship = Math.max(0, Math.min(this.cols - 3, this.ship + dx));
@@ -47,7 +49,7 @@
       if (this.state !== 'playing' || this.bullets.length >= 3 || this.cooldown > 0) return;
       this.bullets.push({ x: this.ship + 1, y: this.rows - 3 });
       this.cooldown = 4;
-      this.sound.tick();
+      this.sound.laser();
     }
 
     /* The fewer aliens left, the faster they march. */
@@ -72,10 +74,12 @@
       for (const b of [...this.bullets]) {
         const i = this.aliens.findIndex((a) => a.x === b.x && a.y === b.y);
         if (i >= 0) {
+          const dead = this.aliens[i];
+          this.lcd.burst([[dead.x, dead.y, this.alienCode(dead)]], 0.9);
           this.aliens.splice(i, 1);
           this.bullets.splice(this.bullets.indexOf(b), 1);
           this.addScore(10 * this.level);
-          this.sound.hit();
+          this.sound.pop();
           this.buzz(10);
         }
       }
@@ -102,7 +106,7 @@
         } else {
           for (const a of this.aliens) a.x += this.dir;
         }
-        this.sound.play(this.dir > 0 ? 180 : 150, 0.04, 0, 'square', 0.04);
+        this.sound.march(this.marchStep = (this.marchStep || 0) + 1);
         if (this.aliens.some((a) => a.y >= this.rows - 3)) { this.gameOver(); return; }
         if (this.bombs.length < 2 + Math.min(this.level, 3) && this.random() < 0.45) {
           const a = this.aliens[this.rand(this.aliens.length)];
@@ -121,20 +125,22 @@
     loseLife() {
       this.lives--;
       this.hud.set('lives', Math.max(0, this.lives), 1);
-      this.sound.lose();
+      this.sound.crash();
+      this.lcd.burst([[this.ship + 1, this.rows - 2, 5], [this.ship, this.rows - 1, 5], [this.ship + 1, this.rows - 1, 5], [this.ship + 2, this.rows - 1, 5]], 1.1);
+      this.lcd.shake(1);
       this.buzz(80);
       if (this.lives <= 0) { this.gameOver(); return; }
       this.shield = 20;
     }
 
     draw() {
-      for (const a of this.aliens) this.lcd.set(a.x, a.y, 1);
-      for (const b of this.bullets) this.lcd.set(b.x, b.y, 1);
-      for (const b of this.bombs) this.lcd.set(b.x, b.y, 1);
+      for (const a of this.aliens) this.lcd.set(a.x, a.y, this.alienCode(a));
+      for (const b of this.bullets) this.lcd.set(b.x, b.y, 9);
+      for (const b of this.bombs) this.lcd.set(b.x, b.y, 8);
       if (this.shield === 0 || this.blink(120)) {
         const s = this.ship, bottom = this.rows - 1;
-        this.lcd.set(s + 1, bottom - 1, 1);
-        this.lcd.set(s, bottom, 1); this.lcd.set(s + 1, bottom, 1); this.lcd.set(s + 2, bottom, 1);
+        this.lcd.set(s + 1, bottom - 1, 5);
+        this.lcd.set(s, bottom, 5); this.lcd.set(s + 1, bottom, 5); this.lcd.set(s + 2, bottom, 5);
       }
     }
   }

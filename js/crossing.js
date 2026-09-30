@@ -68,7 +68,7 @@
       if (nx < 0 || nx >= this.cols || ny < 0 || ny >= this.rows) return;
       this.frog.x = nx;
       this.frog.y = ny;
-      this.sound.tick();
+      this.sound.hop();
       if (ny < this.maxY) { this.maxY = ny; this.addScore(10 * this.level); }
       if (ny === 0) { this.crossed(); return; }
       if (this.shield === 0 && this.hitByCar()) this.squash();
@@ -88,7 +88,9 @@
     squash() {
       this.lives--;
       this.hud.set('lives', Math.max(0, this.lives), 1);
-      this.sound.lose();
+      this.sound.crash();
+      this.lcd.burst([[this.frog.x, this.frog.y, 5]], 1.2);
+      this.lcd.shake(0.9);
       this.buzz(80);
       if (this.lives <= 0) { this.gameOver(); return; }
       this.spawnFrog();
@@ -103,8 +105,8 @@
     }
 
     draw() {
-      for (const lane of this.lanes) for (let x = 0; x < this.cols; x++) if (this.laneHas(lane, x)) this.lcd.set(x, lane.y, 1);
-      if (this.shield === 0 || this.blink(120)) this.lcd.set(this.frog.x, this.frog.y, 1);
+      this.lanes.forEach((lane, li) => { const code = [2, 6, 3, 7, 8][li % 5]; for (let x = 0; x < this.cols; x++) if (this.laneHas(lane, x)) this.lcd.set(x, lane.y, code); });
+      if (this.shield === 0 || this.blink(120)) this.lcd.set(this.frog.x, this.frog.y, 5);
     }
   }
 

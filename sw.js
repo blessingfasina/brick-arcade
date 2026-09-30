@@ -1,9 +1,9 @@
 /* Retro Classic Games — offline cache. Bump VERSION when assets change. */
-const VERSION = 'v5';
+const VERSION = 'v6';
 const CACHE = `rcg-${VERSION}`;
 const ASSETS = [
-  '/', '/snake', '/breaker', '/racer', '/stack', '/pong', '/tanks', '/crossing', '/invaders', '/flappy', '/scores',
-  '/css/style.css', '/js/lcd.js', '/js/hub.js', '/js/scores.js',
+  '/', '/snake', '/breaker', '/racer', '/stack', '/pong', '/tanks', '/crossing', '/invaders', '/flappy', '/scores', '/styles',
+  '/css/style.css', '/js/lcd.js', '/js/hub.js', '/js/scores.js', '/js/styles.js',
   '/js/snake.js', '/js/breaker.js', '/js/racer.js', '/js/stack.js', '/js/pong.js', '/js/tanks.js',
   '/js/crossing.js', '/js/invaders.js', '/js/flappy.js',
   '/icon.svg', '/icon-192.png', '/icon-512.png', '/apple-touch-icon.png', '/manifest.webmanifest',

@@ -103,7 +103,7 @@
         else this.vel.x = dir * 0.6;
         this.ball.x = clamp(fromX);
       }
-      this.sound.hit();
+      this.sound.hit(cpu);
     }
 
     step() {
@@ -111,8 +111,8 @@
       this.moveCpu();
       const b = this.ball, v = this.vel;
       let nx = b.x + v.x;
-      if (nx < 0) { nx = -nx; v.x = -v.x; this.sound.tick(); }
-      else if (nx > this.cols - 1) { nx = 2 * (this.cols - 1) - nx; v.x = -v.x; this.sound.tick(); }
+      if (nx < 0) { nx = -nx; v.x = -v.x; this.sound.wall(); }
+      else if (nx > this.cols - 1) { nx = 2 * (this.cols - 1) - nx; v.x = -v.x; this.sound.wall(); }
       const ny = b.y + v.y;
       const cx = Math.round(nx), px = Math.round(b.x);
       const covers = (pad, x) => x >= pad && x < pad + PADDLE;
@@ -136,6 +136,7 @@
         this.you++;
         this.addScore(10 * this.level);
         this.sound.score();
+        this.lcd.burst([[Math.round(this.ball.x), 0, 2]], 0.8);
         this.hud.set('you', this.you, 1);
         if (this.you >= TO_WIN) {
           this.addScore(50 * this.level);
@@ -152,6 +153,8 @@
         this.lives--;
         this.hud.set('lives', Math.max(0, this.lives), 1);
         this.sound.lose();
+        this.lcd.burst([[Math.round(this.ball.x), this.rows - 1, 4]], 0.8);
+        this.lcd.shake(0.6);
         this.buzz(50);
         if (this.lives <= 0) { this.gameOver(); return; }
       }
@@ -160,10 +163,10 @@
 
     draw() {
       for (let i = 0; i < PADDLE; i++) {
-        this.lcd.set(this.cpuPad + i, 0, 1);
-        this.lcd.set(this.paddle + i, this.rows - 1, 1);
+        this.lcd.set(this.cpuPad + i, 0, 2);
+        this.lcd.set(this.paddle + i, this.rows - 1, 4);
       }
-      if (this.served || this.state !== 'playing' || this.blink(300)) this.lcd.set(Math.round(this.ball.x), this.ball.y, 1);
+      if (this.served || this.state !== 'playing' || this.blink(300)) this.lcd.set(Math.round(this.ball.x), this.ball.y, 9);
     }
   }
 

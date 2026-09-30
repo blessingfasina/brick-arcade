@@ -177,7 +177,8 @@
   document.querySelectorAll('.hh').forEach((card) => {
     const id = card.dataset.game;
     if (!demos[id]) return;
-    const lcd = new LCD(card.querySelector('canvas'), 8, 8);
+    const meta = GAMES.find((g) => g.id === id);
+    const lcd = new LCD(card.querySelector('canvas'), 8, 8, { animate: false, neon: meta ? meta.color : '#3ee9ff' });
     screens.push({ lcd, update: demos[id]() });
     const best = Number(store.get('brick.hi.' + id)) || 0;
     if (best) card.querySelector('[data-best]').textContent = 'BEST ' + fmt(best);

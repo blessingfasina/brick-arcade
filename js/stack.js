@@ -21,6 +21,7 @@
     });
   }
   const LINE_SCORE = [0, 100, 300, 500, 800];
+  const PIECE_CODE = { I: 4, O: 3, T: 7, S: 5, Z: 8, J: 2, L: 6 };
 
   class Stack extends Game {
     constructor() {
@@ -54,7 +55,7 @@
       const rows = Math.min(lv - 1, 8);
       for (let i = 0; i < rows; i++) {
         const row = this.board[this.rows - 1 - i];
-        for (let x = 0; x < this.cols; x++) row[x] = this.random() < 0.6 ? 1 : 0;
+        for (let x = 0; x < this.cols; x++) row[x] = this.random() < 0.6 ? 7 : 0;
         row[this.rand(this.cols)] = 0;
       }
     }
@@ -98,7 +99,7 @@
       const rots = PIECES[this.piece.type].length;
       for (const kick of [0, -1, 1, -2, 2]) {
         const p = { ...this.piece, rot: (this.piece.rot + 1) % rots, x: this.piece.x + kick };
-        if (this.fits(p)) { this.piece = p; this.sound.tick(); return; }
+        if (this.fits(p)) { this.piece = p; this.sound.rotate(); return; }
       }
     }
 
@@ -118,14 +119,17 @@
     async lock() {
       for (const [x, y] of this.cells()) {
         if (y < 0) { this.gameOver(); return; }
-        this.board[y][x] = 1;
+        this.board[y][x] = PIECE_CODE[this.piece.type];
       }
       const full = [];
       this.board.forEach((row, y) => { if (row.every(Boolean)) full.push(y); });
       if (full.length) {
         this.state = 'anim';
         const token = this.animToken;
-        this.sound.clear();
+        this.sound.clear(full.length);
+        const shards = [];
+        for (const y of full) for (let x = 0; x < this.cols; x++) shards.push([x, y, this.board[y][x]]);
+        const flashRows = full.length >= 4;
         for (let i = 0; i < 4; i++) {
           for (const y of full) this.board[y].fill(i % 2 === 0 ? 0 : 1);
           this.lcd.clear();
@@ -134,6 +138,8 @@
           await sleep(90);
           if (token !== this.animToken) return;
         }
+        this.lcd.burst(shards, flashRows ? 1.3 : 1);
+        if (flashRows) this.lcd.flash(3);
         for (const y of full) {
           this.board.splice(y, 1);
           this.board.unshift(new Uint8Array(this.cols));
@@ -152,31 +158,31 @@
         this.state = 'playing';
         this.acc = 0;
       } else {
-        this.sound.hit();
+        this.sound.land();
       }
       this.spawn();
     }
 
     drawPreview() {
       // Created lazily: the base constructor calls reset() before subclass fields exist.
-      this.preview ||= new LCD(document.getElementById('next'), 4, 4, this.lcd.palette);
+      this.preview ||= new LCD(document.getElementById('next'), 4, 4, { palette: this.lcd.palette, style: this.lcd.style, animate: false, neon: this.meta.color });
       this.preview.clear();
       const cells = PIECES[this.next][0];
       const w = Math.max(...cells.map(([x]) => x)) + 1;
       const h = Math.max(...cells.map(([, y]) => y)) + 1;
       const minY = Math.min(...cells.map(([, y]) => y));
       const ox = Math.floor((4 - w) / 2), oy = Math.floor((4 - (h - minY)) / 2) - minY;
-      for (const [x, y] of cells) this.preview.set(ox + x, oy + y, 1);
+      for (const [x, y] of cells) this.preview.set(ox + x, oy + y, PIECE_CODE[this.next]);
       this.preview.draw();
     }
 
     drawBoard() {
-      this.board.forEach((row, y) => { for (let x = 0; x < this.cols; x++) if (row[x]) this.lcd.set(x, y, 1); });
+      this.board.forEach((row, y) => { for (let x = 0; x < this.cols; x++) if (row[x]) this.lcd.set(x, y, row[x]); });
     }
 
     draw() {
       this.drawBoard();
-      if (this.piece) for (const [x, y] of this.cells()) this.lcd.set(x, y, 1);
+      if (this.piece) for (const [x, y] of this.cells()) this.lcd.set(x, y, PIECE_CODE[this.piece.type]);
     }
   }
 

@@ -17,6 +17,7 @@ const GAMES = [
 const PALETTES = {
   classic: { bg: '#9ead86', on: '#1f231d', off: 'rgba(31,35,29,0.10)' },
   contrast: { bg: '#eaf3d8', on: '#000000', off: 'rgba(0,0,0,0.07)' },
+  neon: { bg: '#07020f', on: '#3ee9ff', off: 'rgba(62,233,255,0.09)' },
 };
 const SKINS = ['grey', 'lime', 'orange', 'cyan', 'pink', 'yellow', 'purple', 'black'];
 
@@ -46,17 +47,50 @@ function mulberry32(a) {
   };
 }
 
-/* ---------- LCD grid renderer (brick-handheld cell look) ---------- */
+/* ---------- Screen renderer: Classic LCD, 3D Bricks (default) and Neon Arcade ----------
+   Games only switch cells on and off with set(x, y, code). Code 1 is the game's own colour,
+   codes 2-9 pick a Neon colour. Classic and 3D draw every lit code the same way. */
+const NEON_COLORS = [null, null, '#ff3fa4', '#ffd400', '#3ee9ff', '#7dff5a', '#ff8a2a', '#b57bff', '#ff5a5a', '#eafcff'];
+const STYLES = ['3d', 'neon', 'classic'];
+const REDUCE_MOTION = !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+const hexRgb = (h) => { h = h.replace('#', ''); if (h.length === 3) h = [...h].map((c) => c + c).join(''); const n = parseInt(h, 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
+const mix = (a, b, t) => { const A = hexRgb(a), B = hexRgb(b); return `rgb(${A.map((v, i) => Math.round(v + (B[i] - v) * t)).join(',')})`; };
+const rgba = (hex, a) => `rgba(${hexRgb(hex).join(',')},${a})`;
+const currentStyle = () => { const s = store.get('brick.style', '3d'); return STYLES.includes(s) ? s : '3d'; };
+
+/* Blurred squares via shadowBlur (works in every browser, unlike ctx.filter). */
+function softSquare(size, inner, color, blur, alpha = 1) {
+  const c = document.createElement('canvas'); c.width = c.height = Math.ceil(size);
+  const g = c.getContext('2d'); const off = size * 4;
+  g.globalAlpha = alpha; g.shadowColor = color; g.shadowBlur = blur; g.shadowOffsetX = off; g.fillStyle = color;
+  g.fillRect((size - inner) / 2 - off, (size - inner) / 2, inner, inner);
+  return c;
+}
+
 class LCD {
-  constructor(canvas, cols, rows, palette = PALETTES.classic) {
+  constructor(canvas, cols, rows, opts = {}) {
+    if (opts && opts.on) opts = { palette: opts };
     this.canvas = canvas;
     this.cols = cols;
     this.rows = rows;
-    this.palette = palette;
+    this.n = cols * rows;
+    this.palette = opts.palette || PALETTES.classic;
+    this.style = opts.style || currentStyle();
+    this.animate = opts.animate !== false;
+    this.base = opts.neon || '#3ee9ff';
     this.ctx = canvas.getContext('2d');
-    this.cells = new Uint8Array(cols * rows);
+    this.cells = new Uint8Array(this.n);
+    this.v = new Float32Array(this.n);
+    this.vel = new Float32Array(this.n);
+    this.lastCode = new Uint8Array(this.n);
+    this.particles = [];
+    this.shakeAmt = 0;
+    this.flashAmt = 0;
+    this.flashCode = 3;
+    this.sweep = -1;
+    this.tilt = { x: 0, y: 0 };
     this.cell = 0;
-    this.sprites = null;
+    this.lastT = performance.now();
     new ResizeObserver(() => this.fit()).observe(canvas);
     this.fit();
   }
@@ -70,52 +104,203 @@ class LCD {
     this.cell = cell;
     this.canvas.width = cell * this.cols;
     this.canvas.height = cell * this.rows;
-    this.makeSprites();
+    this.build();
     this.draw();
   }
 
-  setPalette(palette) { this.palette = palette; this.makeSprites(); this.draw(); }
-  makeSprites() { if (this.cell) this.sprites = { on: this.sprite(this.palette.on), off: this.sprite(this.palette.off) }; }
+  setStyle(style) { if (style === this.style) return; this.style = style; this.particles = []; this.v.fill(0); this.build(); this.draw(); }
+  setPalette(palette) { this.palette = palette; this.build(); this.draw(); }
+  setBase(color) { this.base = color; this.build(); }
 
-  sprite(color) {
+  clear() { this.cells.fill(0); }
+  set(x, y, v = 1) { if (x >= 0 && x < this.cols && y >= 0 && y < this.rows) this.cells[y * this.cols + x] = v; }
+  get(x, y) { return x >= 0 && x < this.cols && y >= 0 && y < this.rows ? this.cells[y * this.cols + x] : 0; }
+  blit(pattern, ox = 0, oy = 0, code = 1) {
+    pattern.forEach((row, y) => { for (let x = 0; x < row.length; x++) if (row[x] === 'X') this.set(ox + x, oy + y, code); });
+  }
+
+  /* ---- effects (Classic stays exactly as the handheld: no effects) ---- */
+  burst(cells, power = 1) {
+    if (this.style === 'classic' || !this.cell || this.particles.length > 500) return;
     const s = this.cell;
-    const c = document.createElement('canvas');
-    c.width = c.height = s;
-    const g = c.getContext('2d');
-    const p = Math.max(1, Math.round(s * 0.08));
-    const t = Math.max(1, Math.round(s * 0.13));
-    const i = Math.round(s * 0.33);
-    g.fillStyle = color;
-    g.fillRect(p, p, s - 2 * p, s - 2 * p);
-    g.clearRect(p + t, p + t, s - 2 * p - 2 * t, s - 2 * p - 2 * t);
-    g.fillRect(i, i, s - 2 * i, s - 2 * i);
+    for (const [x, y, code = 1] of cells) {
+      if (this.style === '3d') {
+        for (let q = 0; q < 4; q++) this.particles.push({ x: (x + 0.25 + (q % 2) * 0.5) * s, y: (y + 0.25 + (q >> 1) * 0.5) * s, vx: (Math.random() - 0.5) * s * 16 * power, vy: -(Math.random() * 12 + 6) * s * power, r: Math.random() * 6, spin: (Math.random() - 0.5) * 14, life: 0.9 + Math.random() * 0.5, size: s * 0.42, grav: 1 });
+      } else {
+        for (let q = 0; q < 6; q++) { const a = Math.random() * Math.PI * 2, sp = (Math.random() * 14 + 6) * s * power; this.particles.push({ x: (x + 0.5) * s, y: (y + 0.5) * s, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - s * 4, r: 0, spin: 0, life: 0.45 + Math.random() * 0.45, code, grav: 0.35 }); }
+      }
+    }
+  }
+  flash(code = 3) { if (this.style === 'classic') return; this.flashAmt = 1; this.flashCode = code; this.sweep = 0; }
+  shake(amount = 1) { if (this.style === 'classic' || REDUCE_MOTION) return; this.shakeAmt = Math.max(this.shakeAmt, amount); }
+
+  /* ---- sprites ---- */
+  build() {
+    const s = Math.max(2, Math.ceil(this.cell)); if (!this.cell) return;
+    const pal = this.palette;
+    if (this.style === 'classic') { this.sprites = { on: this.lcdSprite(pal.on), off: this.lcdSprite(pal.off) }; return; }
+    if (this.style === 'neon') {
+      const cols = NEON_COLORS.map((c, i) => (i === 1 ? this.base : c));
+      this.sprites = {
+        glow: cols.map((col) => col && softSquare(s * 2.6, s * 1.05, col, Math.max(2, s * 0.45), 0.8)),
+        core: cols.map((col) => {
+          if (!col) return null;
+          const c = document.createElement('canvas'); c.width = c.height = s; const g = c.getContext('2d');
+          const lw = Math.max(1, s * 0.12), p = s * 0.1; g.strokeStyle = col; g.lineWidth = lw; g.strokeRect(p + lw / 2, p + lw / 2, s - 2 * p - lw, s - 2 * p - lw);
+          const i = s * 0.34; g.fillStyle = col; g.fillRect(i, i, s - 2 * i, s - 2 * i);
+          g.fillStyle = 'rgba(255,255,255,0.75)'; const j = s * 0.42; g.fillRect(j, j, s - 2 * j, s - 2 * j);
+          return c;
+        }),
+      };
+      const bg = document.createElement('canvas'); bg.width = this.canvas.width; bg.height = this.canvas.height;
+      const b = bg.getContext('2d'); b.fillStyle = '#07020f'; b.fillRect(0, 0, bg.width, bg.height);
+      b.strokeStyle = 'rgba(123,76,255,0.16)'; b.lineWidth = Math.max(1, this.cell * 0.04);
+      const p = this.cell * 0.14;
+      for (let i = 0; i < this.n; i++) b.strokeRect((i % this.cols) * this.cell + p, ((i / this.cols) | 0) * this.cell + p, this.cell - 2 * p, this.cell - 2 * p);
+      this.sprites.bg = bg;
+      return;
+    }
+    // 3D Bricks: colours come from the LCD palette, so high contrast still works
+    const on = pal.on, bgc = pal.bg;
+    const top = document.createElement('canvas'); top.width = top.height = s;
+    const g = top.getContext('2d');
+    const gr = g.createLinearGradient(0, 0, s, s); gr.addColorStop(0, mix(on, bgc, 0.35)); gr.addColorStop(1, mix(on, bgc, 0.04));
+    g.fillStyle = gr; g.fillRect(0, 0, s, s);
+    const e = Math.max(1, s * 0.06);
+    g.fillStyle = 'rgba(255,255,255,0.22)'; g.fillRect(0, 0, s, e); g.fillRect(0, 0, e, s);
+    g.fillStyle = 'rgba(0,0,0,0.35)'; g.fillRect(0, s - e, s, e); g.fillRect(s - e, 0, e, s);
+    const r = s * 0.24; g.strokeStyle = 'rgba(0,0,0,0.45)'; g.lineWidth = Math.max(1, s * 0.07); g.strokeRect(r, r, s - 2 * r, s - 2 * r);
+    g.strokeStyle = 'rgba(255,255,255,0.10)'; g.lineWidth = Math.max(1, s * 0.03); g.strokeRect(r + s * 0.04, r + s * 0.04, s - 2 * r, s - 2 * r);
+    const ir = s * 0.38; const ig = g.createLinearGradient(ir, ir, s - ir, s - ir); ig.addColorStop(0, mix(on, bgc, 0.45)); ig.addColorStop(1, mix(on, bgc, 0.12));
+    g.fillStyle = ig; g.fillRect(ir, ir, s - 2 * ir, s - 2 * ir);
+    g.fillStyle = 'rgba(255,255,255,0.28)'; g.fillRect(s * 0.1, s * 0.1, s * 0.16, s * 0.08);
+    const shadow = softSquare(s * 1.8, s * 0.95, rgba(on, 0.55), Math.max(1, s * 0.16));
+    const bg = document.createElement('canvas'); bg.width = this.canvas.width; bg.height = this.canvas.height;
+    const b = bg.getContext('2d');
+    const lg = b.createLinearGradient(0, 0, bg.width, bg.height); lg.addColorStop(0, mix(bgc, '#ffffff', 0.14)); lg.addColorStop(1, mix(bgc, '#000000', 0.1));
+    b.fillStyle = lg; b.fillRect(0, 0, bg.width, bg.height);
+    const pp = this.cell * 0.1;
+    for (let i = 0; i < this.n; i++) {
+      const x = (i % this.cols) * this.cell + pp, y = ((i / this.cols) | 0) * this.cell + pp, w = this.cell - 2 * pp, t = Math.max(1, w * 0.06);
+      b.fillStyle = rgba(on, 0.07); b.fillRect(x, y, w, w);
+      b.fillStyle = rgba(on, 0.16); b.fillRect(x, y, w, t); b.fillRect(x, y, t, w);
+      b.fillStyle = 'rgba(255,255,255,0.22)'; b.fillRect(x, y + w - t, w, t); b.fillRect(x + w - t, y, t, w);
+    }
+    const vg = b.createRadialGradient(bg.width / 2, bg.height / 2, bg.width * 0.4, bg.width / 2, bg.height / 2, Math.max(bg.width, bg.height) * 0.75);
+    vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.2)'); b.fillStyle = vg; b.fillRect(0, 0, bg.width, bg.height);
+    this.sprites = { top, shadow, bg, right: mix(on, '#000000', 0.45), bottom: mix(on, '#000000', 0.25), drop: rgba(on, 0.3) };
+  }
+  lcdSprite(color) {
+    const s = this.cell; const c = document.createElement('canvas'); c.width = c.height = s; const g = c.getContext('2d');
+    const p = Math.max(1, Math.round(s * 0.08)), t = Math.max(1, Math.round(s * 0.13)), i = Math.round(s * 0.33);
+    g.fillStyle = color; g.fillRect(p, p, s - 2 * p, s - 2 * p); g.clearRect(p + t, p + t, s - 2 * p - 2 * t, s - 2 * p - 2 * t); g.fillRect(i, i, s - 2 * i, s - 2 * i);
     return c;
   }
 
-  clear() { this.cells.fill(0); }
-  set(x, y, v = 1) {
-    if (x >= 0 && x < this.cols && y >= 0 && y < this.rows) this.cells[y * this.cols + x] = v;
-  }
-  get(x, y) {
-    return x >= 0 && x < this.cols && y >= 0 && y < this.rows ? this.cells[y * this.cols + x] : 0;
-  }
-  blit(pattern, ox = 0, oy = 0) {
-    pattern.forEach((row, y) => {
-      for (let x = 0; x < row.length; x++) if (row[x] === 'X') this.set(ox + x, oy + y, 1);
-    });
+  /* ---- animation ---- */
+  advance(dt) {
+    const n = this.n, cells = this.cells, v = this.v;
+    for (let i = 0; i < n; i++) if (cells[i]) this.lastCode[i] = cells[i];
+    if (this.style === '3d' && this.animate) {
+      const steps = Math.max(1, Math.min(12, Math.ceil(dt * 120))), h = dt / steps, k = 900, damp = Math.exp(-34 * h);
+      for (let st = 0; st < steps; st++) for (let i = 0; i < n; i++) {
+        this.vel[i] = (this.vel[i] + ((cells[i] ? 1 : 0) - v[i]) * k * h) * damp;
+        v[i] += this.vel[i] * h;
+        if (v[i] < 0) { v[i] = 0; this.vel[i] = 0; }
+      }
+    } else if (this.style === 'neon' && this.animate) {
+      for (let i = 0; i < n; i++) v[i] = cells[i] ? 1 : Math.max(0, v[i] - dt / 0.3);
+    } else {
+      for (let i = 0; i < n; i++) v[i] = cells[i] ? 1 : 0;
+    }
+    if (this.particles.length) {
+      const gr = this.cell * 42, H = this.canvas.height + this.cell * 2;
+      this.particles = this.particles.filter((p) => { p.life -= dt; p.vy += gr * dt * p.grav; p.x += p.vx * dt; p.y += p.vy * dt; p.r += p.spin * dt; return p.life > 0 && p.y < H; });
+    }
+    this.shakeAmt = Math.max(0, this.shakeAmt - dt * 2.6);
+    this.flashAmt = Math.max(0, this.flashAmt - dt * 2.2);
+    if (this.sweep >= 0) { this.sweep += dt * 1.7; if (this.sweep > 1.4) this.sweep = -1; }
   }
 
   draw() {
-    const s = this.cell;
-    if (!s || !this.sprites) return;
+    if (!this.cell || !this.sprites) return;
+    const now = performance.now();
+    const dt = Math.min(0.1, Math.max(0, (now - this.lastT) / 1000));
+    this.lastT = now;
+    this.advance(dt);
     const g = this.ctx;
-    g.fillStyle = this.palette.bg;
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    if (this.style === 'classic') { this.drawClassic(g); return; }
+    g.fillStyle = this.style === 'neon' ? '#07020f' : this.palette.bg;
     g.fillRect(0, 0, this.canvas.width, this.canvas.height);
-    for (let y = 0; y < this.rows; y++) {
-      for (let x = 0; x < this.cols; x++) {
-        g.drawImage(this.cells[y * this.cols + x] ? this.sprites.on : this.sprites.off, x * s, y * s);
-      }
+    if (this.shakeAmt > 0) { const a = this.shakeAmt * this.shakeAmt * this.cell * 0.45; g.translate((Math.random() - 0.5) * 2 * a, (Math.random() - 0.5) * 2 * a); }
+    if (this.style === '3d') this.draw3D(g); else this.drawNeon(g);
+  }
+
+  drawClassic(g) {
+    const s = this.cell, sp = this.sprites;
+    g.fillStyle = this.palette.bg; g.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    for (let y = 0; y < this.rows; y++) for (let x = 0; x < this.cols; x++) g.drawImage(this.cells[y * this.cols + x] ? sp.on : sp.off, x * s, y * s);
+  }
+
+  draw3D(g) {
+    const s = this.cell, sp = this.sprites, pad = s * 0.08, w = s - 2 * pad, cols = this.cols;
+    g.drawImage(sp.bg, 0, 0);
+    const vx = Math.max(0.12, Math.min(1, 0.55 + this.tilt.x * 0.45)), vy = Math.max(0.2, Math.min(1.2, 0.8 + this.tilt.y * 0.4));
+    const depth = s * 0.26;
+    for (let i = 0; i < this.n; i++) {
+      const v = this.v[i]; if (v < 0.02) continue;
+      const d = depth * v, x = (i % cols) * s + pad, y = ((i / cols) | 0) * s + pad;
+      g.globalAlpha = Math.min(1, v);
+      g.drawImage(sp.shadow, x - w * 0.4 + vx * d * 0.9, y - w * 0.4 + vy * d * 0.9, w * 1.8, w * 1.8);
     }
+    g.globalAlpha = 1;
+    for (let i = 0; i < this.n; i++) {
+      const v = this.v[i]; if (v < 0.02) continue;
+      const d = depth * v, bx = (i % cols) * s + pad, by = ((i / cols) | 0) * s + pad;
+      const tx = bx - vx * d, ty = by - vy * d;
+      g.fillStyle = sp.right;
+      g.beginPath(); g.moveTo(bx + w, by); g.lineTo(bx + w, by + w); g.lineTo(tx + w, ty + w); g.lineTo(tx + w, ty); g.closePath(); g.fill();
+      g.fillStyle = sp.bottom;
+      g.beginPath(); g.moveTo(bx, by + w); g.lineTo(bx + w, by + w); g.lineTo(tx + w, ty + w); g.lineTo(tx, ty + w); g.closePath(); g.fill();
+      g.drawImage(sp.top, tx, ty, w, w);
+    }
+    for (const p of this.particles) {
+      g.globalAlpha = Math.max(0, Math.min(1, p.life / 0.4));
+      g.save(); g.translate(p.x + vx * s * 0.3, p.y + vy * s * 0.3); g.rotate(p.r); g.fillStyle = sp.drop; g.fillRect(-p.size / 2, -p.size / 2, p.size, p.size); g.restore();
+      g.save(); g.translate(p.x, p.y); g.rotate(p.r); g.drawImage(sp.top, -p.size / 2, -p.size / 2, p.size, p.size); g.restore();
+    }
+    g.globalAlpha = 1;
+    if (this.sweep >= 0) {
+      const W = this.canvas.width, H = this.canvas.height, pos = (this.sweep - 0.2) * (W + H);
+      const gr = g.createLinearGradient(pos - W * 0.5, pos - W * 0.5, pos, pos);
+      gr.addColorStop(0, 'rgba(255,255,240,0)'); gr.addColorStop(0.7, 'rgba(255,255,240,0.45)'); gr.addColorStop(1, 'rgba(255,255,240,0)');
+      g.fillStyle = gr; g.fillRect(0, 0, W, H);
+    }
+  }
+
+  drawNeon(g) {
+    const s = this.cell, sp = this.sprites, cols = this.cols;
+    g.drawImage(sp.bg, 0, 0);
+    g.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < this.n; i++) {
+      const v = this.v[i]; if (v < 0.02) continue;
+      let code = this.cells[i] || this.lastCode[i] || 1; if (!sp.core[code]) code = 1;
+      const x = (i % cols) * s, y = ((i / cols) | 0) * s;
+      g.globalAlpha = v * 0.85; g.drawImage(sp.glow[code], x - s * 0.8, y - s * 0.8, s * 2.6, s * 2.6);
+      g.globalAlpha = v; g.drawImage(sp.core[code], x, y, s, s);
+    }
+    for (const p of this.particles) {
+      const code = sp.core[p.code] ? p.code : 1;
+      g.globalAlpha = Math.max(0, Math.min(1, p.life / 0.5));
+      g.strokeStyle = code === 1 ? this.base : NEON_COLORS[code]; g.lineWidth = Math.max(1, s * 0.1);
+      g.beginPath(); g.moveTo(p.x, p.y); g.lineTo(p.x - p.vx * 0.035, p.y - p.vy * 0.035); g.stroke();
+      g.drawImage(sp.glow[code], p.x - s * 0.5, p.y - s * 0.5, s, s);
+    }
+    if (this.flashAmt > 0) { g.globalAlpha = this.flashAmt * 0.35; g.fillStyle = NEON_COLORS[this.flashCode] || this.base; g.fillRect(0, 0, this.canvas.width, this.canvas.height); }
+    if (this.shakeAmt > 0.5) { g.globalAlpha = (this.shakeAmt - 0.5) * 0.5; g.fillStyle = '#ff2050'; g.fillRect(0, 0, this.canvas.width, this.canvas.height); }
+    g.globalAlpha = 1;
+    g.globalCompositeOperation = 'source-over';
   }
 }
 
@@ -297,46 +482,147 @@ class Input {
   releaseAll() { [...this.down].forEach((n) => this.release(n)); }
 }
 
-/* ---------- Sound: tiny WebAudio bleeps ---------- */
+/* ---------- Sound: synthesised effects, flavoured by the screen style ----------
+   Classic LCD sounds like the piezo speaker in the real handheld (square beeps only).
+   3D Bricks is a fuller arcade set with noise for crunches and explosions.
+   Neon Arcade runs the same sounds through a sweeping filter and an echo. */
 class Sound {
   constructor() {
     this.ctx = null;
     this.muted = store.get('brick.muted') === '1';
-    const unlock = () => {
-      if (!this.ctx) {
-        const AC = window.AudioContext || window.webkitAudioContext;
-        if (AC) this.ctx = new AC();
-      }
-      if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
-    };
-    window.addEventListener('pointerdown', unlock);
-    window.addEventListener('keydown', unlock);
+    this.volume = Math.max(0, Math.min(100, Number(store.get('brick.volume', '70'))));
+    if (!Number.isFinite(this.volume)) this.volume = 70;
+    this.style = currentStyle();
+    this.engine = null;
+    const unlock = () => this.unlock();
+    ['pointerdown', 'touchend', 'keydown', 'click'].forEach((ev) => window.addEventListener(ev, unlock, { passive: true }));
   }
-  setMuted(m) { this.muted = m; store.set('brick.muted', m ? '1' : '0'); }
+  unlock() {
+    if (!this.ctx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      const c = this.ctx = new AC();
+      this.master = c.createGain();
+      const comp = c.createDynamicsCompressor();
+      comp.threshold.value = -16; comp.knee.value = 12; comp.ratio.value = 4; comp.attack.value = 0.003; comp.release.value = 0.2;
+      this.master.connect(comp).connect(c.destination);
+      // Echo send used by the Neon style
+      this.echo = c.createGain();
+      const delay = c.createDelay(1); delay.delayTime.value = 0.17;
+      const fb = c.createGain(); fb.gain.value = 0.33;
+      const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2600;
+      const wet = c.createGain(); wet.gain.value = 0.32;
+      this.echo.connect(delay); delay.connect(lp); lp.connect(fb); fb.connect(delay); lp.connect(wet); wet.connect(this.master);
+      // One second of white noise, reused for every crunch and boom
+      const buf = c.createBuffer(1, c.sampleRate, c.sampleRate); const d = buf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      this.noiseBuf = buf;
+      // iOS only starts audio after a sound is played inside a tap
+      const s = c.createBufferSource(); s.buffer = c.createBuffer(1, 1, 22050); s.connect(c.destination); s.start(0);
+      this.applyVolume();
+    }
+    if (this.ctx.state === 'suspended') this.ctx.resume();
+  }
+  applyVolume() { if (this.master) this.master.gain.value = this.muted ? 0 : Math.pow(this.volume / 100, 1.6) * 0.95; }
+  setMuted(m) { this.muted = m; store.set('brick.muted', m ? '1' : '0'); this.applyVolume(); if (m) this.engineStop(); }
   toggle() { this.setMuted(!this.muted); return this.muted; }
-  play(freq, dur = 0.06, at = 0, type = 'square', vol = 0.06) {
-    if (this.muted || !this.ctx) return;
-    const t = this.ctx.currentTime + at;
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-    osc.type = type;
-    osc.frequency.value = freq;
-    gain.gain.setValueAtTime(vol, t);
-    gain.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    osc.connect(gain).connect(this.ctx.destination);
-    osc.start(t);
-    osc.stop(t + dur + 0.02);
+  setVolume(v) { this.volume = Math.max(0, Math.min(100, v)); store.set('brick.volume', this.volume); this.applyVolume(); }
+  get live() { return !!this.ctx && !this.muted && this.volume > 0; }
+
+  /* ---- building blocks ---- */
+  tone({ type = 'square', f = 440, f1 = 0, dur = 0.08, vol = 0.15, at = 0, attack = 0.004 } = {}) {
+    if (!this.live) return;
+    const c = this.ctx, t = c.currentTime + at, st = this.style;
+    if (st === 'classic') type = 'square';
+    else if (st === 'neon' && type === 'triangle') type = 'sawtooth';
+    const o = c.createOscillator(); o.type = type; o.frequency.setValueAtTime(f, t);
+    if (f1) o.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t + dur);
+    const g = c.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol * (st === 'classic' ? 0.8 : 1), t + attack);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    let node = o;
+    if (st === 'neon') {
+      const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = 6;
+      lp.frequency.setValueAtTime(Math.min(14000, f * 7), t); lp.frequency.exponentialRampToValueAtTime(Math.max(180, f * 1.3), t + dur);
+      o.connect(lp); node = lp;
+    }
+    node.connect(g); g.connect(this.master);
+    if (st === 'neon') g.connect(this.echo);
+    o.start(t); o.stop(t + dur + 0.05);
   }
-  seq(notes) { let at = 0; for (const [f, d] of notes) { this.play(f, d, at); at += d; } }
-  tick() { this.play(1200, 0.025, 0, 'square', 0.03); }
-  hit() { this.play(660, 0.06); }
-  score() { this.seq([[880, 0.05], [1320, 0.09]]); }
-  lose() { this.seq([[440, 0.1], [330, 0.1], [220, 0.2]]); }
-  level() { this.seq([[660, 0.06], [880, 0.06], [1100, 0.06], [1320, 0.14]]); }
-  over() { this.seq([[523, 0.12], [392, 0.12], [330, 0.12], [262, 0.3]]); }
-  clear() { this.seq([[988, 0.05], [1319, 0.05], [1760, 0.12]]); }
-  best() { this.seq([[784, 0.07], [988, 0.07], [1175, 0.07], [1568, 0.07], [1175, 0.05], [1568, 0.22]]); }
-  boot() { this.seq([[523, 0.08], [659, 0.08], [784, 0.08], [1047, 0.16]]); }
+  noise({ dur = 0.2, vol = 0.2, at = 0, type = 'lowpass', f = 2000, f1 = 0, q = 0.8 } = {}) {
+    if (!this.live) return;
+    if (this.style === 'classic') { this.tone({ f: 70 + Math.min(f, 1600) / 8, f1: 45, dur: Math.min(dur, 0.25), vol: vol * 0.7, at }); return; }
+    const c = this.ctx, t = c.currentTime + at;
+    const src = c.createBufferSource(); src.buffer = this.noiseBuf; src.loop = true;
+    const flt = c.createBiquadFilter(); flt.type = type; flt.Q.value = q; flt.frequency.setValueAtTime(f, t);
+    if (f1) flt.frequency.exponentialRampToValueAtTime(Math.max(30, f1), t + dur);
+    const g = c.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.005); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    src.connect(flt).connect(g).connect(this.master);
+    if (this.style === 'neon') g.connect(this.echo);
+    src.start(t, Math.random() * 0.5); src.stop(t + dur + 0.05);
+  }
+  play(freq, dur = 0.06, at = 0, type = 'square', vol = 0.06) { this.tone({ f: freq, dur, at, type, vol: vol * 2 }); }
+  seq(notes, type = 'square', vol = 0.13) { let at = 0; for (const [f, d] of notes) { if (f) this.tone({ type, f, dur: d * 0.95, vol, at }); at += d; } }
+
+  /* ---- the sound set ---- */
+  tick() { this.tone({ f: 1500, dur: 0.022, vol: 0.05 }); }
+  select() { this.tone({ f: 1100, f1: 1650, dur: 0.05, vol: 0.08 }); }
+  rotate() { this.tone({ type: 'triangle', f: 700, f1: 1100, dur: 0.05, vol: 0.09 }); }
+  wall() { this.tone({ f: 360, dur: 0.03, vol: 0.07 }); }
+  hit(high = false) { this.tone({ f: (high ? 780 : 520) + Math.random() * 30, dur: 0.055, vol: 0.13 }); }
+  land() { this.tone({ type: 'sine', f: 190, f1: 70, dur: 0.1, vol: 0.22 }); this.noise({ type: 'lowpass', f: 700, f1: 150, dur: 0.07, vol: 0.12 }); }
+  brick() { this.noise({ type: 'bandpass', f: 3200, f1: 1100, q: 1.3, dur: 0.08, vol: 0.18 }); this.tone({ f: 900 + Math.random() * 120, f1: 480, dur: 0.06, vol: 0.07 }); }
+  eat() { this.tone({ type: 'triangle', f: 330, f1: 660, dur: 0.05, vol: 0.14 }); this.tone({ type: 'triangle', f: 660, f1: 1000, dur: 0.07, vol: 0.12, at: 0.05 }); }
+  score() { this.tone({ f: 988, dur: 0.06, vol: 0.09 }); this.tone({ f: 1319, dur: 0.12, vol: 0.09, at: 0.06 }); }
+  laser() { this.tone({ f: 1600, f1: 170, dur: 0.14, vol: 0.09 }); }
+  cannon(enemy = false) { this.noise({ type: 'lowpass', f: enemy ? 900 : 1500, f1: 160, dur: 0.16, vol: enemy ? 0.1 : 0.2 }); this.tone({ type: 'sine', f: enemy ? 120 : 160, f1: 50, dur: 0.16, vol: enemy ? 0.1 : 0.18 }); }
+  pop() { this.noise({ type: 'bandpass', f: 1900, f1: 450, q: 1, dur: 0.14, vol: 0.18 }); this.tone({ f: 620, f1: 110, dur: 0.11, vol: 0.07 }); }
+  explode() { this.noise({ type: 'lowpass', f: 3400, f1: 70, dur: 0.55, vol: 0.32 }); this.tone({ type: 'sine', f: 120, f1: 32, dur: 0.5, vol: 0.26 }); }
+  crash() { this.explode(); this.tone({ f: 420, f1: 55, dur: 0.38, vol: 0.09, at: 0.02 }); }
+  flap() { this.noise({ type: 'bandpass', f: 650, f1: 1700, q: 0.7, dur: 0.11, vol: 0.12 }); this.tone({ type: 'triangle', f: 360, f1: 640, dur: 0.07, vol: 0.07 }); }
+  hop() { this.tone({ type: 'triangle', f: 500, f1: 900, dur: 0.06, vol: 0.1 }); }
+  march(step) { this.tone({ f: [196, 175, 165, 147][step % 4], dur: 0.09, vol: 0.13, attack: 0.002 }); }
+  lose() { this.seq([[440, 0.1], [330, 0.1], [220, 0.22]]); }
+  level() { this.seq([[660, 0.06], [880, 0.06], [1100, 0.06], [1320, 0.16]], 'triangle', 0.12); this.noise({ type: 'highpass', f: 5000, dur: 0.3, vol: 0.04, at: 0.18 }); }
+  clear(lines = 1) {
+    const notes = [523, 659, 784, 1047, 1319, 1568];
+    for (let i = 0; i <= Math.min(lines, 4); i++) this.tone({ type: 'triangle', f: notes[i], dur: 0.09, vol: 0.12, at: i * 0.05 });
+    this.noise({ type: 'highpass', f: 4200, dur: 0.25 + lines * 0.05, vol: 0.05 + lines * 0.015 });
+    if (lines >= 4) this.seq([[0, 0.25], [1047, 0.08], [1319, 0.08], [1568, 0.2]], 'square', 0.1);
+  }
+  over() { this.seq([[523, 0.14], [392, 0.14], [330, 0.14], [262, 0.38]]); }
+  best() { this.seq([[784, 0.08], [988, 0.08], [1175, 0.08], [1568, 0.08], [1175, 0.06], [1568, 0.28]], 'square', 0.12); }
+  boot() { this.seq([[523, 0.07], [659, 0.07], [784, 0.07], [1047, 0.16]], 'square', 0.11); }
+
+  /* ---- a continuous engine note for Brick Racer (not on the piezo Classic style) ---- */
+  engineStart() {
+    if (!this.live || this.engine || this.style === 'classic') return;
+    const c = this.ctx, t = c.currentTime;
+    const o1 = c.createOscillator(); o1.type = 'sawtooth';
+    const o2 = c.createOscillator(); o2.type = 'square'; o2.detune.value = -1200 + 8;
+    const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = this.style === 'neon' ? 8 : 2;
+    const g = c.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.05, t + 0.25);
+    o1.connect(lp); o2.connect(lp); lp.connect(g); g.connect(this.master);
+    o1.start(t); o2.start(t);
+    this.engine = { o1, o2, lp, g };
+    this.engineSet(0);
+  }
+  engineSet(rate) {
+    if (!this.engine) return;
+    const t = this.ctx.currentTime, e = this.engine, r = Math.max(0, Math.min(1, rate));
+    e.o1.frequency.setTargetAtTime(52 + r * 130, t, 0.08);
+    e.o2.frequency.setTargetAtTime(52 + r * 130, t, 0.08);
+    e.lp.frequency.setTargetAtTime(280 + r * 1600, t, 0.08);
+  }
+  engineStop() {
+    if (!this.engine) return;
+    const e = this.engine, t = this.ctx.currentTime;
+    e.g.gain.cancelScheduledValues(t); e.g.gain.setTargetAtTime(0.0001, t, 0.06);
+    e.o1.stop(t + 0.3); e.o2.stop(t + 0.3);
+    this.engine = null;
+  }
 }
 
 /* ---------- Stats (local): plays per game, days played, totals ---------- */
@@ -414,7 +700,7 @@ class Game {
     this.speed = this.daily ? 1 : pick(`brick.sp.${id}`);
     this.overAt = 0;
 
-    this.lcd = new LCD(document.getElementById('lcd'), cols, rows);
+    this.lcd = new LCD(document.getElementById('lcd'), cols, rows, { neon: this.meta.color });
     this.hud = new HUD(document.querySelector('.hud'));
     this.input = new Input(document);
     this.sound = new Sound();
@@ -437,7 +723,8 @@ class Game {
     this.input.on('up', (rep) => this.menu('level', rep));
     this.input.on('down', (rep) => this.menu('speed', rep));
     const mc = document.querySelector('.mascot');
-    this.mascot = mc ? new Mascot(mc, () => this.lcd.palette) : null;
+    this.mascot = mc ? new Mascot(mc, () => (this.lcd.style === 'neon' ? PALETTES.neon : this.lcd.palette)) : null;
+    this.initTilt();
     document.querySelector('[data-mute]')?.addEventListener('click', () => this.toggleMute());
     this.overlay.addEventListener('click', (e) => {
       if (e.target.closest('[data-share]')) this.share();
@@ -503,7 +790,7 @@ class Game {
     }
     if (kind === 'level') { this.startLevel = this.startLevel % 10 + 1; store.set(`brick.lv.${this.id}`, this.startLevel); }
     else { this.speed = this.speed % 10 + 1; store.set(`brick.sp.${this.id}`, this.speed); }
-    this.sound.tick();
+    this.sound.select();
     this.state = 'idle';
     this.prepare();
     this.showMenu();
@@ -551,12 +838,14 @@ class Game {
     this.mascot?.set('run');
     this.sound.boot();
   }
-  pause() { this.state = 'paused'; this.showOverlay('PAUSED'); this.setIcon('pause', true); this.mascot?.set('rest'); }
+  pause() { this.state = 'paused'; this.showOverlay('PAUSED'); this.setIcon('pause', true); this.mascot?.set('rest'); this.sound.engineStop(); }
   resume() { this.state = 'playing'; this.acc = 0; this.hideOverlay(); this.setIcon('pause', false); this.mascot?.set('run'); }
 
   async gameOver() {
     this.state = 'anim';
     this.mascot?.set('down');
+    this.sound.engineStop();
+    this.lcd.shake(1.2);
     this.setIcon('pause', false);
     this.sound.over();
     this.buzz([60, 40, 60]);
@@ -621,7 +910,7 @@ class Game {
       this.hi = this.score;
       store.set(this.hiKey, this.hi);
       this.hud.set('hi', this.hi);
-      if (first) { this.newBest = true; this.sound.best(); this.hud.flash(); this.buzz([30, 30, 30]); this.mascot?.set('cheer', 1600); }
+      if (first) { this.newBest = true; this.sound.best(); this.hud.flash(); this.buzz([30, 30, 30]); this.mascot?.set('cheer', 1600); this.lcd.flash(2); }
       else if (!this.newBest) this.newBest = true;
     }
     this.hud.set('score', this.score);
@@ -651,13 +940,22 @@ class Game {
     open.addEventListener('click', () => { panel.hidden = !panel.hidden; if (!panel.hidden && this.state === 'playing') this.pause(); this.syncSettings(); });
     panel.querySelector('[data-close]')?.addEventListener('click', () => { panel.hidden = true; });
     panel.addEventListener('click', (e) => {
-      // Only the swatch buttons: the console element itself also carries data-skin.
+      // Only the swatch and style buttons: the console element itself also carries data-skin.
       const s = e.target.closest('.swatch');
       if (s) { store.set('brick.skin', s.dataset.skin); this.applySettings(); this.syncSettings(); }
+      const st = e.target.closest('.stylebtn');
+      if (st) { store.set('brick.style', st.dataset.style); this.applySettings(); this.syncSettings(); this.lcd.flash(3); this.sound.select(); }
+    });
+    panel.addEventListener('input', (e) => {
+      if (e.target.dataset.set !== 'volume') return;
+      this.sound.setVolume(Number(e.target.value));
+      clearTimeout(this.volTimer); this.volTimer = setTimeout(() => this.sound.score(), 120);
     });
     panel.addEventListener('change', (e) => {
       const k = e.target.dataset.set;
+      if (k === 'volume') return;
       if (k === 'sound') this.sound.setMuted(!e.target.checked);
+      else if (k === 'tilt') { store.set('brick.tilt', e.target.checked ? '1' : '0'); if (e.target.checked) this.askTilt(); }
       else if (k) store.set('brick.' + k, e.target.checked ? '1' : '0');
       this.applySettings();
       this.syncMute();
@@ -674,6 +972,12 @@ class Game {
     const pal = hc ? PALETTES.contrast : PALETTES.classic;
     if (this.lcd.palette !== pal) this.lcd.setPalette(pal);
     if (this.preview && this.preview.palette !== pal) this.preview.setPalette(pal);
+    const style = currentStyle();
+    c.dataset.style = style;
+    this.lcd.setStyle(style);
+    this.preview?.setStyle(style);
+    this.sound.style = style;
+    if (style === 'classic') this.sound.engineStop();
   }
   syncSettings() {
     const panel = document.getElementById('settings');
@@ -681,9 +985,46 @@ class Game {
     const skin = store.get('brick.skin', 'grey');
     panel.querySelectorAll('[data-skin]').forEach((b) => b.classList.toggle('is-on', b.dataset.skin === skin));
     const set = (k, v) => { const el = panel.querySelector(`[data-set="${k}"]`); if (el) el.checked = v; };
+    const style = currentStyle();
+    panel.querySelectorAll('.stylebtn').forEach((b) => { const on = b.dataset.style === style; b.classList.toggle('is-on', on); b.setAttribute('aria-pressed', String(on)); });
+    const vol = panel.querySelector('[data-set="volume"]'); if (vol) vol.value = this.sound.volume;
+    set('tilt', this.tiltWanted());
     set('bigpad', store.get('brick.bigpad') === '1');
     set('contrast', store.get('brick.contrast') === '1');
     set('sound', !this.sound.muted);
+  }
+
+  /* --- tilt: the screen leans with the phone (3D and Neon only) --- */
+  tiltWanted() {
+    const needsPermission = typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function';
+    return store.get('brick.tilt', needsPermission ? '0' : '1') === '1';
+  }
+  askTilt() {
+    const D = typeof DeviceOrientationEvent !== 'undefined' ? DeviceOrientationEvent : null;
+    if (D && typeof D.requestPermission === 'function') {
+      D.requestPermission().then((r) => { if (r !== 'granted') { store.set('brick.tilt', '0'); this.syncSettings(); } }).catch(() => { store.set('brick.tilt', '0'); this.syncSettings(); });
+    }
+  }
+  initTilt() {
+    this.tiltEl = document.querySelector('.screen');
+    this.tiltBase = null;
+    this.tiltTarget = { x: 0, y: 0 };
+    window.addEventListener('deviceorientation', (e) => {
+      if (e.beta == null || e.gamma == null) return;
+      if (this.tiltBase == null) this.tiltBase = e.beta;
+      this.tiltBase += (e.beta - this.tiltBase) * 0.01;
+      this.tiltTarget.x = Math.max(-1, Math.min(1, e.gamma / 22));
+      this.tiltTarget.y = Math.max(-1, Math.min(1, (e.beta - this.tiltBase) / 22));
+    });
+  }
+  updateTilt(dt) {
+    const on = !REDUCE_MOTION && this.lcd.style !== 'classic' && this.tiltWanted();
+    const tt = on ? this.tiltTarget : { x: 0, y: 0 }, cur = this.lcd.tilt;
+    const k = Math.min(1, dt * 8);
+    cur.x += (tt.x - cur.x) * k; cur.y += (tt.y - cur.y) * k;
+    if (!this.tiltEl) return;
+    const tf = Math.abs(cur.x) + Math.abs(cur.y) < 0.002 ? '' : `perspective(900px) rotateX(${(-cur.y * 5).toFixed(2)}deg) rotateY(${(cur.x * 6).toFixed(2)}deg)`;
+    if (tf !== this.lastTilt) { this.tiltEl.style.transform = tf; this.lastTilt = tf; }
   }
 
   /* --- loop --- */
@@ -700,14 +1041,15 @@ class Game {
         if (this.state !== 'playing') { this.acc = 0; break; }
         iv = this.tickInterval() * this.speedFactor();
       }
-      if (this.level > this.seenLevel) { this.seenLevel = this.level; this.mascot?.set('cheer', 1400); }
+      if (this.level > this.seenLevel) { this.seenLevel = this.level; this.mascot?.set('cheer', 1400); this.lcd.flash(3); }
     }
     this.mascot?.update(t, this.speed);
+    this.updateTilt(dt / 1000);
     if (this.state !== 'anim') {
       this.lcd.clear();
       this.draw();
-      this.lcd.draw();
     }
+    this.lcd.draw();
     requestAnimationFrame((tt) => this.frame(tt));
   }
 
@@ -736,4 +1078,4 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
   });
 }
 
-window.BrickArcade = { LCD, HUD, Input, Sound, Game, Stats, Leaderboard, GAMES, PALETTES, SKINS, SITE, store, segSVG, sleep, fmt, dayKey, dayNumber, dailyGame, hashSeed, mulberry32 };
+window.BrickArcade = { LCD, HUD, Input, Sound, Game, Stats, Leaderboard, GAMES, PALETTES, SKINS, STYLES, currentStyle, SITE, store, segSVG, sleep, fmt, dayKey, dayNumber, dailyGame, hashSeed, mulberry32 };

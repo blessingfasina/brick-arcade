@@ -5,6 +5,11 @@ Live at https://retroclassic.games
 Nine classic handheld brick games in the browser: Snake, Brick Breaker, Brick Racer, Brick Stack, Pong, Tanks, Road Crossing, Invaders and Flappy. Daily challenge with a shared seed, local scoreboard, installable and works offline.
 Plain HTML, CSS and JavaScript. No build step, no dependencies.
 
+
+## Screen styles and sound
+
+Every game renders through one engine (`js/lcd.js`) in three styles: 3D Bricks (default), Neon Arcade and Classic LCD, chosen under SETTING or at `/styles`. Games only set grid cells, so styles never change gameplay or scores. Code 1 is a game's own colour and codes 2-9 pick Neon colours. Sound is synthesised with Web Audio and follows the style: square-wave piezo beeps for Classic, a fuller arcade set for 3D, and filtered synth with echo for Neon.
+
 ## Run locally
 
 ```bash

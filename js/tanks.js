@@ -65,7 +65,7 @@
       if (this.state !== 'playing') return;
       if (this.bullets.filter((b) => b.owner === 'p').length >= 2) return;
       this.bullets.push(this.bulletFrom(this.player, 'p'));
-      this.sound.tick();
+      this.sound.cannon();
     }
 
     step() {
@@ -122,7 +122,7 @@
       e.y += dy;
       const enemyShots = this.bullets.filter((b) => b.owner === 'e').length;
       const trigger = (aligned && e.dir === 'down' ? 0.35 : 0.05) + this.level * 0.01;
-      if (enemyShots < 3 && this.random() < trigger) this.bullets.push(this.bulletFrom(e, 'e'));
+      if (enemyShots < 3 && this.random() < trigger) { this.bullets.push(this.bulletFrom(e, 'e')); this.sound.cannon(true); }
     }
 
     pickDir() {
@@ -149,7 +149,9 @@
       this.enemies = this.enemies.filter((e) => e !== enemy);
       this.kills++;
       this.addScore(100 * this.level);
-      this.sound.hit();
+      this.sound.explode();
+      const parts = []; SPRITES[enemy.dir].forEach((row, y) => [...row].forEach((c, x) => { if (c === 'X') parts.push([enemy.x + x, enemy.y + y, 8]); }));
+      this.lcd.burst(parts, 1.1);
       this.buzz(15);
       this.hud.set('tanks', KILLS_PER_LEVEL - (this.kills % KILLS_PER_LEVEL), 2);
       if (this.kills % KILLS_PER_LEVEL === 0) {
@@ -162,7 +164,10 @@
     hitPlayer() {
       this.lives--;
       this.hud.set('lives', Math.max(0, this.lives), 1);
-      this.sound.lose();
+      this.sound.crash();
+      const parts = []; SPRITES[this.player.dir].forEach((row, y) => [...row].forEach((c, x) => { if (c === 'X') parts.push([this.player.x + x, this.player.y + y, 5]); }));
+      this.lcd.burst(parts, 1.1);
+      this.lcd.shake(1);
       this.buzz(80);
       if (this.lives <= 0) { this.gameOver(); return; }
       this.player = { x: 3, y: this.rows - 3, dir: 'up' };
@@ -171,12 +176,12 @@
       this.shield = 25;
     }
 
-    drawTank(t) { this.lcd.blit(SPRITES[t.dir], t.x, t.y); }
+    drawTank(t, code) { this.lcd.blit(SPRITES[t.dir], t.x, t.y, code); }
 
     draw() {
-      for (const e of this.enemies) this.drawTank(e);
-      if (this.shield === 0 || this.blink(120)) this.drawTank(this.player);
-      for (const b of this.bullets) this.lcd.set(b.x, b.y, 1);
+      for (const e of this.enemies) this.drawTank(e, 8);
+      if (this.shield === 0 || this.blink(120)) this.drawTank(this.player, 5);
+      for (const b of this.bullets) this.lcd.set(b.x, b.y, b.owner === 'p' ? 9 : 6);
     }
   }
 

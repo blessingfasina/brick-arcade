@@ -76,10 +76,14 @@
 
 
     <div class="settings" id="settings" hidden aria-label="Settings">
+      <div class="settings__row"><span>SCREEN STYLE</span><div class="stylebtns" role="group" aria-label="Screen style"><button type="button" class="stylebtn" data-style="3d" aria-pressed="false">3D</button><button type="button" class="stylebtn" data-style="neon" aria-pressed="false">NEON</button><button type="button" class="stylebtn" data-style="classic" aria-pressed="false">LCD</button></div></div>
       <div class="settings__row"><span>CONSOLE COLOUR</span><div class="swatches"></div></div>
       <label class="settings__row"><span>BIG BUTTONS</span><input type="checkbox" data-set="bigpad"></label>
       <label class="settings__row"><span>HIGH CONTRAST SCREEN</span><input type="checkbox" data-set="contrast"></label>
       <label class="settings__row"><span>SOUND</span><input type="checkbox" data-set="sound"></label>
+      <div class="settings__row"><label for="vol-range">VOLUME</label><input type="range" id="vol-range" min="0" max="100" step="5" data-set="volume"></div>
+      <label class="settings__row"><span>TILT WITH PHONE</span><input type="checkbox" data-set="tilt"></label>
+      <a class="settings__link" href="/styles">Compare the screen styles ›</a>
       <button type="button" class="settings__close" data-close>DONE</button>
     </div>
 

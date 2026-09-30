@@ -55,6 +55,8 @@
     }
 
     step() {
+      this.sound.engineStart();
+      this.sound.engineSet(Math.min(1, (this.level - 1) / 9 * 0.6 + (this.input.held('action') ? 0.4 : 0) + (this.speed - 1) / 30));
       this.wall = (this.wall + 1) % 4;
       for (const e of this.enemies) e.y++;
       const last = this.enemies[this.enemies.length - 1];
@@ -87,7 +89,10 @@
     async crash() {
       this.lives--;
       this.hud.set('lives', Math.max(0, this.lives), 1);
-      this.sound.lose();
+      this.sound.engineStop();
+      this.sound.crash();
+      this.lcd.burst(CAR.map(([x, y]) => [this.player.x + x, this.player.y + y, 4]), 1);
+      this.lcd.shake(1);
       this.buzz(80);
       if (this.lives <= 0) { this.gameOver(); return; }
       this.state = 'anim';
@@ -110,10 +115,10 @@
 
     draw() {
       for (let y = 0; y < this.rows; y++) {
-        if ((((y - this.wall) % 4) + 4) % 4 !== 3) { this.lcd.set(0, y, 1); this.lcd.set(this.cols - 1, y, 1); }
+        if ((((y - this.wall) % 4) + 4) % 4 !== 3) { this.lcd.set(0, y, 7); this.lcd.set(this.cols - 1, y, 7); }
       }
-      for (const e of this.enemies) for (const [x, y] of CAR) this.lcd.set(e.x + x, e.y + y, 1);
-      if (!this.hidden) for (const [x, y] of CAR) this.lcd.set(this.player.x + x, this.player.y + y, 1);
+      for (const e of this.enemies) for (const [x, y] of CAR) this.lcd.set(e.x + x, e.y + y, 2);
+      if (!this.hidden) for (const [x, y] of CAR) this.lcd.set(this.player.x + x, this.player.y + y, 4);
     }
   }
 
