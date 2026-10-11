@@ -53,4 +53,4 @@ The extras only change how the game looks, or let you practise old dailies. They
 5. `screenshots/05-racer.png`: Brick Racer in the Classic LCD style
 
 ## Icon
-`icon-512.png` in the project root (512 × 512 PNG).
+`icon-512.png` in this folder (512 × 512 PNG). Source: `icon-512.svg`.

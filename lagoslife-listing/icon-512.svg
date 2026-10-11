@@ -1,0 +1,92 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="38%" r="75%">
+      <stop offset="0" stop-color="#4a1fa8"/>
+      <stop offset="0.6" stop-color="#220c55"/>
+      <stop offset="1" stop-color="#12072b"/>
+    </radialGradient>
+    <linearGradient id="body" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f4f1ea"/>
+      <stop offset="1" stop-color="#cfc9bc"/>
+    </linearGradient>
+    <linearGradient id="lcd" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#b3c29b"/>
+      <stop offset="1" stop-color="#94a37c"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="14" stdDeviation="14" flood-color="#000" flood-opacity="0.45"/>
+    </filter>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="5"/>
+    </filter>
+    <!-- One LCD brick: outer ring and centre block, like the game's Classic cells -->
+    <g id="brick">
+      <path d="M1 1h19v19H1z M5 5v11h11V5z" fill-rule="evenodd"/>
+      <rect x="7.5" y="7.5" width="6" height="6"/>
+    </g>
+    <!-- A heavier brick for the snake, so it still reads at small sizes -->
+    <g id="brickBold">
+      <path d="M0.5 0.5h20v20H0.5z M6.5 6.5v8h8v-8z" fill-rule="evenodd"/>
+      <rect x="8.5" y="8.5" width="4" height="4"/>
+    </g>
+  </defs>
+
+  <rect width="512" height="512" fill="url(#bg)"/>
+
+  <!-- Falling neon bricks, as on the menu page -->
+  <g fill="none" stroke-width="7" opacity="0.85">
+    <rect x="40" y="70" width="34" height="34" rx="3" stroke="#ff5fb0" transform="rotate(-14 57 87)"/>
+    <rect x="424" y="96" width="40" height="40" rx="3" stroke="#3ee9ff" transform="rotate(12 444 116)"/>
+    <rect x="34" y="372" width="40" height="40" rx="3" stroke="#ffd400" transform="rotate(18 54 392)"/>
+    <rect x="436" y="352" width="30" height="30" rx="3" stroke="#7dff5a" transform="rotate(-20 451 367)"/>
+  </g>
+
+  <g transform="rotate(-7 256 266)" filter="url(#shadow)">
+    <!-- Console body -->
+    <rect x="118" y="46" width="276" height="432" rx="40" fill="url(#body)"/>
+    <rect x="118" y="46" width="276" height="432" rx="40" fill="none" stroke="#ffffff" stroke-opacity="0.6" stroke-width="3"/>
+    <!-- Screen bezel with a purple frame line, like the in-game console -->
+    <rect x="144" y="74" width="224" height="222" rx="18" fill="#7b3fe4"/>
+    <rect x="150" y="80" width="212" height="210" rx="14" fill="#23262b"/>
+    <!-- LCD: 8 x 8 cells of 21 -->
+    <rect x="172" y="101" width="168" height="168" rx="4" fill="url(#lcd)"/>
+    <g transform="translate(172 101)">
+      <g fill="#1f231d" fill-opacity="0.09">
+        <use href="#brick" x="0" y="0"/><use href="#brick" x="21" y="0"/><use href="#brick" x="42" y="0"/><use href="#brick" x="63" y="0"/><use href="#brick" x="84" y="0"/><use href="#brick" x="105" y="0"/><use href="#brick" x="126" y="0"/><use href="#brick" x="147" y="0"/>
+        <use href="#brick" x="0" y="21"/><use href="#brick" x="21" y="21"/><use href="#brick" x="63" y="21"/><use href="#brick" x="84" y="21"/><use href="#brick" x="105" y="21"/><use href="#brick" x="126" y="21"/><use href="#brick" x="147" y="21"/>
+        <use href="#brick" x="0" y="42"/><use href="#brick" x="21" y="42"/><use href="#brick" x="42" y="42"/><use href="#brick" x="63" y="42"/><use href="#brick" x="84" y="42"/><use href="#brick" x="147" y="42"/>
+        <use href="#brick" x="0" y="63"/><use href="#brick" x="21" y="63"/><use href="#brick" x="42" y="63"/><use href="#brick" x="63" y="63"/><use href="#brick" x="147" y="63"/>
+        <use href="#brick" x="0" y="84"/><use href="#brick" x="105" y="84"/><use href="#brick" x="126" y="84"/><use href="#brick" x="147" y="84"/>
+        <use href="#brick" x="0" y="105"/><use href="#brick" x="105" y="105"/><use href="#brick" x="126" y="105"/><use href="#brick" x="147" y="105"/>
+        <use href="#brick" x="0" y="126"/><use href="#brick" x="21" y="126"/><use href="#brick" x="42" y="126"/><use href="#brick" x="63" y="126"/><use href="#brick" x="84" y="126"/><use href="#brick" x="105" y="126"/><use href="#brick" x="126" y="126"/><use href="#brick" x="147" y="126"/>
+        <use href="#brick" x="0" y="147"/><use href="#brick" x="21" y="147"/><use href="#brick" x="42" y="147"/><use href="#brick" x="63" y="147"/><use href="#brick" x="84" y="147"/><use href="#brick" x="105" y="147"/><use href="#brick" x="126" y="147"/><use href="#brick" x="147" y="147"/>
+      </g>
+      <!-- The snake, heading for the food -->
+      <g fill="#1f231d">
+        <use href="#brickBold" x="21" y="84"/><use href="#brickBold" x="21" y="105"/><use href="#brickBold" x="42" y="105"/><use href="#brickBold" x="63" y="105"/><use href="#brickBold" x="84" y="105"/>
+        <use href="#brickBold" x="84" y="84"/><use href="#brickBold" x="84" y="63"/><use href="#brickBold" x="105" y="63"/><use href="#brickBold" x="126" y="63"/>
+        <use href="#brickBold" x="42" y="21"/>
+      </g>
+    </g>
+    <!-- Glass shine -->
+    <path d="M172 101h80l-46 168h-34z" fill="#ffffff" fill-opacity="0.08"/>
+
+    <!-- D-pad -->
+    <g transform="translate(196 384)">
+      <circle r="56" fill="#000" fill-opacity="0.08"/>
+      <path d="M-15 -48h30v33h33v30h-33v33h-30v-33h-33v-30h33z" fill="#c98a00" transform="translate(0 5)"/>
+      <path d="M-15 -48h30v33h33v30h-33v33h-30v-33h-33v-30h33z" fill="#ffc22e"/>
+      <circle r="7" fill="#e3a400"/>
+    </g>
+    <!-- Action button with a soft glow -->
+    <g transform="translate(320 392)">
+      <circle r="38" fill="#3ee9ff" filter="url(#glow)" opacity="0.55"/>
+      <circle r="32" fill="#1f5fd0" transform="translate(0 5)"/>
+      <circle r="32" fill="#3a8dff"/>
+      <ellipse cx="-9" cy="-11" rx="12" ry="8" fill="#ffffff" fill-opacity="0.45"/>
+    </g>
+    <!-- Small start buttons -->
+    <rect x="270" y="318" width="34" height="12" rx="6" fill="#8b8579"/>
+    <rect x="318" y="318" width="34" height="12" rx="6" fill="#8b8579"/>
+  </g>
+</svg>
