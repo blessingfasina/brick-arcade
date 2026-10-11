@@ -4,45 +4,14 @@
    Keys: lb:<game> (all-time, top 1000 kept), lb:<game>:<day> (daily, 45-day TTL), names (hash id -> name). */
 'use strict';
 
-const GAMES = new Set(['snake', 'breaker', 'racer', 'stack', 'pong', 'tanks', 'crossing', 'invaders', 'flappy']);
+const { GAMES, redis, send, readBody, overLimit, redisConfigured } = require('./_lib');
 const MAX_SCORE = 5000000;
 const KEEP = 1000;
-
-const REST_URL = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
-const REST_TOKEN = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
-
-async function redis(commands, fetchImpl = fetch) {
-  const r = await fetchImpl(`${REST_URL}/pipeline`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${REST_TOKEN}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify(commands),
-  });
-  if (!r.ok) throw new Error(`redis ${r.status}`);
-  const out = await r.json();
-  return out.map((o) => { if (o.error) throw new Error(o.error); return o.result; });
-}
 
 const cleanName = (name) => String(name || '').replace(/[^A-Za-z0-9 _.-]/g, '').trim().slice(0, 12).toUpperCase();
 const isDay = (d) => /^\d{4}-\d{2}-\d{2}$/.test(d);
 const isId = (id) => /^[a-z0-9-]{8,40}$/.test(id);
 const today = () => new Date().toISOString().slice(0, 10);
-
-function send(res, status, body) {
-  res.statusCode = status;
-  res.setHeader('Content-Type', 'application/json; charset=utf-8');
-  res.setHeader('Cache-Control', 'no-store');
-  res.end(JSON.stringify(body));
-}
-
-function readBody(req) {
-  if (req.body !== undefined) return Promise.resolve(typeof req.body === 'string' ? JSON.parse(req.body) : req.body);
-  return new Promise((resolve, reject) => {
-    let data = '';
-    req.on('data', (c) => { data += c; if (data.length > 10000) reject(new Error('too large')); });
-    req.on('end', () => { try { resolve(data ? JSON.parse(data) : {}); } catch (e) { reject(e); } });
-    req.on('error', reject);
-  });
-}
 
 function board(flat, names, me) {
   const out = [];
@@ -92,9 +61,7 @@ async function handlePost(req, res, fetchImpl) {
     return send(res, 400, { error: 'bad request' });
   }
 
-  const ip = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || 'unknown';
-  const [hits] = await redis([['INCR', `rl:${ip}`], ['EXPIRE', `rl:${ip}`, 60]], fetchImpl);
-  if (hits > 30) return send(res, 429, { error: 'slow down' });
+  if (await overLimit(req, 'rl', 30, fetchImpl)) return send(res, 429, { error: 'slow down' });
 
   const cmds = [
     ['HSET', 'names', id, name],
@@ -108,7 +75,7 @@ async function handlePost(req, res, fetchImpl) {
 }
 
 async function handler(req, res, fetchImpl = fetch) {
-  if (!REST_URL || !REST_TOKEN) return send(res, 503, { error: 'leaderboard not configured' });
+  if (!redisConfigured) return send(res, 503, { error: 'leaderboard not configured' });
   try {
     if (req.method === 'GET') return await handleGet(req, res, fetchImpl);
     if (req.method === 'POST') return await handlePost(req, res, fetchImpl);

@@ -119,11 +119,11 @@ a { color: inherit; }
 .overlay .best { color: #7a1f4f; }
 .overlay .best s { opacity: 0.6; }
 .overlay__btns { display: flex; gap: 8px; justify-content: center; margin-top: 12px; }
-.overlay__btns button {
-  font-family: var(--pixel); font-size: 8px; padding: 9px 11px; border: 0; border-radius: 6px; cursor: pointer;
+.overlay__btns button, .overlay__btns a {
+  font-family: var(--pixel); font-size: 8px; padding: 9px 11px; border: 0; border-radius: 6px; cursor: pointer; text-decoration: none;
   background: var(--ink); color: var(--lcd); box-shadow: 0 3px 0 rgba(0, 0, 0, 0.35);
 }
-.overlay__btns button:active { transform: translateY(2px); box-shadow: none; }
+.overlay__btns button:active, .overlay__btns a:active { transform: translateY(2px); box-shadow: none; }
 .hud.is-flash { animation: hudflash 0.6s steps(2, start) 3; }
 @keyframes hudflash { to { background: rgba(31, 35, 29, 0.35); } }
 
@@ -136,6 +136,10 @@ a { color: inherit; }
 .console[data-skin="purple"] { --plastic-hi: #ece0ff; --plastic: #c6a4ff; --plastic-lo: #8b5cf6; --console-ink: #2b1a4d; }
 .console[data-skin="black"] { --plastic-hi: #4a4d52; --plastic: #2b2e33; --plastic-lo: #15171a; --console-ink: #ecece8; --console-muted: #a3a6a0; --chip: #3f434a; }
 .console[data-skin="black"] .screen { box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.8), 0 1px 0 #555; }
+/* Premium pack, sold inside Lagos Life */
+.console[data-skin="gold"] { --plastic-hi: #fff1b8; --plastic: #e8b923; --plastic-lo: #a87a06; --console-ink: #3d2a00; --console-muted: #6b4f0e; }
+.console[data-skin="chrome"] { --plastic-hi: #ffffff; --plastic: #c3c8cf; --plastic-lo: #7c838c; --console-ink: #1d2126; }
+.console[data-skin="jade"] { --plastic-hi: #5fd6a0; --plastic: #12895a; --plastic-lo: #075a39; --console-ink: #effff6; --console-muted: #b5ecd2; --chip: #0b6e47; }
 
 /* ---------- Big buttons ---------- */
 .console--big .lcd { height: min(44vh, 400px); }
@@ -167,6 +171,13 @@ a { color: inherit; }
 .swatch.is-on { border-color: #fff; }
 .swatch--grey { background: #e2ded5; } .swatch--lime { background: #a4ee83; } .swatch--orange { background: #ffb066; } .swatch--cyan { background: #7fe6f7; }
 .swatch--pink { background: #ee3d93; } .swatch--yellow { background: #ffd94d; } .swatch--purple { background: #c6a4ff; } .swatch--black { background: #2b2e33; }
+.swatch--gold { background: linear-gradient(135deg, #fff1b8, #e8b923 45%, #a87a06); } .swatch--chrome { background: linear-gradient(135deg, #fff, #c3c8cf 45%, #7c838c); } .swatch--jade { background: linear-gradient(135deg, #5fd6a0, #12895a 45%, #075a39); }
+.swatch.is-locked { opacity: 0.45; }
+.settings__row[hidden], .settings__buy[hidden] { display: none; }
+.settings__buy { font-family: var(--pixel); font-size: 8px; padding: 6px 10px; border: 0; border-radius: 999px; background: #ffd94d; color: #1d201b; cursor: pointer; }
+.settings__buy:disabled { opacity: 0.6; cursor: wait; }
+/* Inside the Lagos Life game player: the menu, the games and the daily challenge, nothing that leaves the frame */
+.in-host .about, .in-host .hint, .in-host .settings__link, .in-host .hub__links, .in-host .ios-hint, .in-host .hub__foot { display: none; }
 .settings__close { margin-top: 12px; width: 100%; font-family: var(--pixel); font-size: 8px; padding: 12px; border: 0; border-radius: 10px; background: #7dff5a; color: #1d201b; cursor: pointer; }
 
 /* ---------- Hub: daily challenge, install, streak ---------- */
@@ -370,6 +381,9 @@ a { color: inherit; }
 .console[data-skin="yellow"] { --accent: #c8246a; }
 .console[data-skin="purple"] { --accent: #fff27a; }
 .console[data-skin="black"] { --accent: #ff5fb0; }
+.console[data-skin="gold"] { --accent: #1f2f8a; }
+.console[data-skin="chrome"] { --accent: #c8246a; }
+.console[data-skin="jade"] { --accent: #ffd94d; }
 
 /* ---------- Screen styles ---------- */
 .stylebtns { display: flex; gap: 6px; }

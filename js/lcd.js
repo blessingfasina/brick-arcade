@@ -20,13 +20,17 @@ const PALETTES = {
   neon: { bg: '#07020f', on: '#3ee9ff', off: 'rgba(62,233,255,0.09)' },
 };
 const SKINS = ['grey', 'lime', 'orange', 'cyan', 'pink', 'yellow', 'purple', 'black'];
+// Sold as one pack inside Lagos Life (js/lagoslife.js); not offered on the open web.
+const PREMIUM_SKINS = ['gold', 'chrome', 'jade'];
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const fmt = (n) => Number(n).toLocaleString();
+// Falls back to memory where storage throws (private mode, sandboxed frames).
+const memStore = new Map();
 const store = {
-  get(k, d = null) { try { const v = localStorage.getItem(k); return v === null ? d : v; } catch (_) { return d; } },
-  set(k, v) { try { localStorage.setItem(k, String(v)); } catch (_) { /* private mode */ } },
-  json(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch (_) { return d; } },
+  get(k, d = null) { try { const v = localStorage.getItem(k); return v === null ? d : v; } catch (_) { return memStore.has(k) ? memStore.get(k) : d; } },
+  set(k, v) { try { localStorage.setItem(k, String(v)); } catch (_) { memStore.set(k, String(v)); } },
+  json(k, d) { try { return JSON.parse(store.get(k)) ?? d; } catch (_) { return d; } },
 };
 
 /* ---------- Daily challenge helpers (UTC day, same seed for everyone) ---------- */
@@ -705,6 +709,7 @@ class Game {
     this.input = new Input(document);
     this.sound = new Sound();
     this.overlay = document.getElementById('overlay');
+    this.host = window.LagosLife || null;
     this.state = 'idle';
     this.score = 0;
     this.hi = Number(store.get(this.hiKey)) || 0;
@@ -742,6 +747,7 @@ class Game {
     });
     this.initSettings();
     this.syncMute();
+    if (this.host) this.connectHost();
 
     document.addEventListener('visibilitychange', () => {
       if (document.hidden && this.state === 'playing') this.pause();
@@ -865,7 +871,7 @@ class Game {
     }
     this.state = 'over';
     this.overAt = performance.now();
-    if (this.score > 0 && !Leaderboard.name() && store.get('brick.nameAsked') !== '1') { this.showNamePrompt(); return; }
+    if (!this.hosted && this.score > 0 && !Leaderboard.name() && store.get('brick.nameAsked') !== '1') { this.showNamePrompt(); return; }
     this.showGameOver();
   }
 
@@ -876,6 +882,17 @@ class Game {
   }
 
   showGameOver() {
+    if (this.hosted) {
+      // Inside Lagos Life the player is signed in and sharing is blocked by the frame. The whole arcade
+      // shares one Lagos Life board, so only the daily challenge (same game for everyone) goes on it.
+      if (this.daily) {
+        this.showOverlay(`GAME OVER${this.scoreLine()}<small class="world" data-world></small><div class="overlay__btns"><button type="button" data-again>AGAIN</button></div>`);
+        if (this.score > 0) this.postHostScore();
+      } else {
+        this.showOverlay(`GAME OVER${this.scoreLine()}<small class="world">PLAY THE DAILY TO RANK<br>ON LAGOS LIFE</small><div class="overlay__btns"><a class="overlay__btn" href="/${dailyGame().id}?mode=daily">DAILY</a><button type="button" data-again>AGAIN</button></div>`);
+      }
+      return;
+    }
     const join = this.score > 0 && !Leaderboard.name() ? '<button type="button" data-join>JOIN WORLD BOARD</button>' : '';
     this.showOverlay(`GAME OVER${this.scoreLine()}<small class="world" data-world></small><div class="overlay__btns"><button type="button" data-share>SHARE</button>${join}<button type="button" data-again>AGAIN</button></div>`);
     if (this.score > 0 && Leaderboard.name()) this.postScore();
@@ -900,6 +917,47 @@ class Game {
       slot.textContent = rank ? `WORLD #${fmt(rank)}${this.daily ? ' TODAY' : ''}` : '';
       if (rank && rank <= 10) this.sound.best();
     } catch (_) { if (slot) slot.textContent = ''; }
+  }
+
+  /* Send a finished daily challenge score to the Lagos Life board and show the player's rank there. */
+  async postHostScore() {
+    const slot = this.overlay.querySelector('[data-world]');
+    const score = this.score;
+    if (slot) slot.textContent = 'SAVING…';
+    try {
+      await this.host.submitScore(score);
+      const { me } = await this.host.leaderboard();
+      if (!slot) return;
+      slot.textContent = me && me.rank ? `LAGOS LIFE #${fmt(me.rank)}` : (me && me.label) || '';
+      if (me && me.rank && me.rank <= 10 && me.score === score) this.sound.best();
+    } catch (_) { if (slot) slot.textContent = ''; }
+  }
+
+  /* --- Lagos Life: the whole arcade is one listing; pause/resume from the player, premium colour pack --- */
+  get hosted() { return !!(this.host && this.host.active); }
+  connectHost() {
+    const host = this.host;
+    host.on('pause', () => { if (this.state === 'playing') this.pause(); this.sound.ctx?.suspend(); });
+    host.on('resume', () => { this.sound.ctx?.resume(); });
+    host.on('owned', () => { this.applySettings(); this.syncSettings(); });
+    host.ready.then((h) => { this.syncSettings(); if (h) host.refresh().catch(() => {}); });
+  }
+  ownsPack() { return !!(this.hosted && this.host.owned.has(this.host.pack)); }
+  async buyPack() {
+    const btn = document.querySelector('[data-buy]');
+    const say = (t) => { if (btn) btn.textContent = t; };
+    if (btn) btn.disabled = true;
+    say('OPENING…');
+    try {
+      if (await this.host.buy()) { store.set('brick.skin', PREMIUM_SKINS[0]); this.applySettings(); this.sound.best(); }
+      say('UNLOCK');
+    } catch (e) {
+      const code = e && e.code;
+      say(code === 'cancelled' ? 'UNLOCK' : code === 'payment_failed' ? 'PAYMENT FAILED' : 'TRY AGAIN');
+    } finally {
+      if (btn) btn.disabled = false;
+      this.syncSettings();
+    }
   }
 
   addScore(n) {
@@ -937,11 +995,21 @@ class Game {
     if (!panel || !open) { this.applySettings(); return; }
     const sw = panel.querySelector('.swatches');
     if (sw) sw.innerHTML = SKINS.map((s) => `<button type="button" class="swatch swatch--${s}" data-skin="${s}" aria-label="${s}"></button>`).join('');
+    if (sw && this.host) {
+      const row = document.createElement('div');
+      row.className = 'settings__row settings__row--premium';
+      row.dataset.premium = '';
+      row.hidden = true;
+      row.innerHTML = `<span>PREMIUM COLOURS</span><div class="swatches">${PREMIUM_SKINS.map((s) => `<button type="button" class="swatch swatch--${s}" data-skin="${s}" aria-label="${s}"></button>`).join('')}<button type="button" class="settings__buy" data-buy>UNLOCK</button></div>`;
+      sw.closest('.settings__row').after(row);
+    }
     open.addEventListener('click', () => { panel.hidden = !panel.hidden; if (!panel.hidden && this.state === 'playing') this.pause(); this.syncSettings(); });
     panel.querySelector('[data-close]')?.addEventListener('click', () => { panel.hidden = true; });
     panel.addEventListener('click', (e) => {
       // Only the swatch and style buttons: the console element itself also carries data-skin.
+      if (e.target.closest('[data-buy]')) { this.buyPack(); return; }
       const s = e.target.closest('.swatch');
+      if (s && PREMIUM_SKINS.includes(s.dataset.skin) && !this.ownsPack()) { this.buyPack(); return; }
       if (s) { store.set('brick.skin', s.dataset.skin); this.applySettings(); this.syncSettings(); }
       const st = e.target.closest('.stylebtn');
       if (st) { store.set('brick.style', st.dataset.style); this.applySettings(); this.syncSettings(); this.lcd.flash(3); this.sound.select(); }
@@ -965,7 +1033,8 @@ class Game {
   applySettings() {
     const c = this.console;
     if (!c) return;
-    c.dataset.skin = store.get('brick.skin', 'grey');
+    const skin = store.get('brick.skin', 'grey');
+    c.dataset.skin = PREMIUM_SKINS.includes(skin) && !this.ownsPack() ? 'grey' : skin;
     c.classList.toggle('console--big', store.get('brick.bigpad') === '1');
     const hc = store.get('brick.contrast') === '1';
     c.classList.toggle('console--hc', hc);
@@ -982,8 +1051,16 @@ class Game {
   syncSettings() {
     const panel = document.getElementById('settings');
     if (!panel) return;
-    const skin = store.get('brick.skin', 'grey');
+    const skin = this.console ? this.console.dataset.skin : store.get('brick.skin', 'grey');
     panel.querySelectorAll('[data-skin]').forEach((b) => b.classList.toggle('is-on', b.dataset.skin === skin));
+    const premium = panel.querySelector('[data-premium]');
+    if (premium) {
+      const owns = this.ownsPack();
+      premium.hidden = !this.hosted;
+      premium.querySelectorAll('.swatch').forEach((b) => b.classList.toggle('is-locked', !owns));
+      const buy = premium.querySelector('[data-buy]');
+      if (buy) buy.hidden = owns;
+    }
     const set = (k, v) => { const el = panel.querySelector(`[data-set="${k}"]`); if (el) el.checked = v; };
     const style = currentStyle();
     panel.querySelectorAll('.stylebtn').forEach((b) => { const on = b.dataset.style === style; b.classList.toggle('is-on', on); b.setAttribute('aria-pressed', String(on)); });
@@ -1068,7 +1145,9 @@ class Game {
 }
 
 /* ---------- Offline / install ---------- */
-if ('serviceWorker' in navigator && location.protocol === 'https:') {
+let canCache = false;
+try { canCache = !window.LagosLife && 'serviceWorker' in navigator && !!navigator.serviceWorker && location.protocol === 'https:'; } catch (_) { /* sandboxed frame */ }
+if (canCache) {
   window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js').catch(() => {}); });
   let refreshing = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => {

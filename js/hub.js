@@ -212,13 +212,16 @@
     tickClock();
     setInterval(tickClock, 1000);
     const world = daily.querySelector('[data-daily-world]');
-    if (world) {
+    const host = window.LagosLife;
+    if (world) (host ? host.ready : Promise.resolve(null)).then((h) => {
+      // Inside Lagos Life the daily challenge is what goes on the Lagos Life board.
+      if (h) { world.textContent = 'DAILY SCORES RANK ON LAGOS LIFE'; world.hidden = false; return; }
       Leaderboard.fetch(g.id, { day: dayKey(), limit: 1 }).then((r) => {
         const top = r.daily[0];
         world.textContent = top ? `WORLD BEST TODAY: ${fmt(top.score)} BY ${top.name}` : 'NO WORLD SCORE YET TODAY. BE FIRST.';
         world.hidden = false;
       }).catch(() => {});
-    }
+    });
   }
 
   /* ---------- Install as an app ---------- */
