@@ -1,7 +1,7 @@
 /* Retro Classic Games — Lagos Life host adapter (Vatar Games SDK, https://lagoslife.app/developers/docs).
    Does nothing on the open web. The whole arcade is one Lagos Life listing: inside the Vatar game player
    this loads the SDK on every page, signs the player in, passes on pause/resume, sends daily challenge
-   scores to the Lagos Life board and handles the premium colour pack. */
+   scores to the Lagos Life board and handles the extras players can buy (product ids in js/lcd.js). */
 'use strict';
 (() => {
   let framed = true;
@@ -10,6 +10,7 @@
 
   const SDK = 'https://lagoslife.app/sdk/vatar-games-v1.js';
   const SCORE_GAP = 20500; // the SDK keeps one score per 20 s per player
+  const BUNDLE = 'everything_bundle'; // owning it counts as owning every product
   const root = document.documentElement;
   root.classList.add('in-host');
 
@@ -44,8 +45,8 @@
     active: true, // optimistic until init answers, so the page never offers links out of the frame
     player: null,
     mode: null,
-    pack: 'console_pack',
     owned: new Set(),
+    owns(productId) { return LL.owned.has(productId) || LL.owned.has(BUNDLE); },
     on(k, fn) { listeners[k].push(fn); },
     ready: null,
     refresh,
@@ -96,7 +97,7 @@
     return sync((list || []).map(purchaseId));
   }
 
-  async function buy(productId = LL.pack) {
+  async function buy(productId) {
     await need();
     try {
       const p = await V.purchase(productId);
@@ -105,7 +106,7 @@
       if (e && e.code === 'owned') await sync();
       else throw e;
     }
-    return LL.owned.has(productId);
+    return LL.owns(productId);
   }
 
   /* One score per 20 s counts, so a quick second game waits and sends the higher of the two. */

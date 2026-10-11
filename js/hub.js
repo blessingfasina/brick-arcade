@@ -1,7 +1,7 @@
 /* Retro Classic Games — home page: animated mini handhelds, daily challenge, install, backdrop */
 'use strict';
 (() => {
-  const { LCD, GAMES, store, dailyGame, dayKey, fmt, Leaderboard } = window.BrickArcade;
+  const { LCD, GAMES, store, dailyGame, dayKey, dayLabel, pastDailies, fmt, Leaderboard, PRODUCTS, owns } = window.BrickArcade;
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const rand = (n) => Math.floor(Math.random() * n);
 
@@ -221,6 +221,41 @@
         world.textContent = top ? `WORLD BEST TODAY: ${fmt(top.score)} BY ${top.name}` : 'NO WORLD SCORE YET TODAY. BE FIRST.';
         world.hidden = false;
       }).catch(() => {});
+    });
+  }
+
+  /* ---------- Daily archive (Lagos Life extra): the last 30 dailies, replayed unranked ---------- */
+  const archive = document.querySelector('[data-archive]');
+  const host = window.LagosLife;
+  if (archive && host) {
+    const list = archive.querySelector('[data-archive-list]');
+    const note = archive.querySelector('[data-archive-note]');
+    const buy = archive.querySelector('[data-archive-buy]');
+    const render = () => {
+      const open = owns(PRODUCTS.archive);
+      buy.hidden = open;
+      note.textContent = open ? 'PRACTICE RUNS. ONLY TODAY\'S DAILY GOES ON THE LAGOS LIFE BOARD.' : 'UNLOCK THE DAILY ARCHIVE TO REPLAY ANY OF THESE.';
+      list.classList.toggle('is-locked', !open);
+      list.innerHTML = pastDailies().map(({ day, game }) => {
+        const best = Number(store.get(`brick.daily.${game.id}.${day}`)) || 0;
+        return `<li><a href="/${game.id}?mode=daily&day=${day}" style="--c:${game.color}"><span>${dayLabel(day, true)}</span><b>${game.name.toUpperCase()}</b><em>${best ? fmt(best) : '—'}</em></a></li>`;
+      }).join('');
+    };
+    const show = () => { archive.hidden = false; render(); host.refresh().then(render).catch(() => {}); };
+    list.addEventListener('click', (e) => { if (!owns(PRODUCTS.archive) && e.target.closest('a')) { e.preventDefault(); buy.click(); } });
+    buy.addEventListener('click', async () => {
+      buy.disabled = true; buy.textContent = 'OPENING…';
+      try { await host.buy(PRODUCTS.archive); buy.textContent = 'UNLOCK'; } catch (e) { buy.textContent = e && e.code === 'cancelled' ? 'UNLOCK' : 'TRY AGAIN'; }
+      buy.disabled = false;
+      render();
+    });
+    archive.querySelector('[data-archive-close]').addEventListener('click', () => { archive.hidden = true; if (location.hash === '#archive') try { history.replaceState(null, '', location.pathname); } catch (_) { /* sandboxed frame */ } });
+    host.ready.then((h) => {
+      if (!h) return;
+      const btn = document.querySelector('[data-archive-open]');
+      btn.hidden = false;
+      btn.addEventListener('click', show);
+      if (location.hash === '#archive') show();
     });
   }
 

@@ -37,8 +37,19 @@ The whole arcade is one listing in the Lagos Life Games app (Vatar Games SDK, ht
 
 - `js/lagoslife.js` (on the home page and every game page) does nothing on the open web. When a page is framed it loads the SDK, and if `Vatar.init()` answers the page switches to Lagos Life mode: the player's pause/resume is honoured, and sharing, the world-board name prompt, the scoreboard and styles pages, the install button and links out of the frame are hidden. Moving between the menu and the games works as usual.
 - Lagos Life gives a listing one leaderboard, so only daily challenge scores go on it (same game, level and speed for everyone that day). Other games end with a DAILY button. One score per 20 s counts, so a quick replay sends the higher score.
-- The premium colour pack (gold, chrome, jade) is product `console_pack`, sold only inside Lagos Life and unlocked in every game. Create it with that id on the Vatar dashboard.
-- `api/vatar.js` verifies the session and each purchase with the Vatar API, grants it, marks it delivered and keeps ownership in Redis. Set `VATAR_SECRET` (the `vtr_test_…` key) and, once approved, `VATAR_LIVE_SECRET` (`vtr_live_…`) in the Vercel project settings; for `vercel dev` put them in `.env.local`, which git ignores. The webhook and match results secrets are not used.
+- Extras sold only inside Lagos Life, unlocked across every game. None change gameplay or scores. Create each on the Vatar dashboard with exactly this product id:
+
+  | Product id | What it unlocks | Suggested price |
+  | --- | --- | --- |
+  | `console_pack` | Gold, chrome and jade consoles | ₦300 |
+  | `crt_screen` | Amber CRT screen style | ₦500 |
+  | `mascot_outfits` | Crown, cap and shades for the mascot | ₦200 |
+  | `daily_archive` | Replay the last 30 daily challenges (`?mode=daily&day=YYYY-MM-DD`), unranked | ₦500 |
+  | `everything_bundle` | All four | ₦1,200 |
+
+  They are bought from SETTING in any game (locked items buy their pack when tapped); the archive also opens from PAST DAILIES on the home page.
+- `api/vatar.js` verifies the session and each purchase with the Vatar API, grants it, marks it delivered and keeps ownership in Redis. Set `VATAR_SECRET` (the `vtr_test_…` key) and, once approved, `VATAR_LIVE_SECRET` (`vtr_live_…`) in the Vercel project settings; for `vercel dev` put them in `.env.local`, which git ignores. The match results secret is not used.
+- `api/vatar-webhook.js` handles the optional `purchase.paid` webhook, so a purchase is delivered even if the player closes the game while paying. Register `https://retroclassic.games/api/vatar-webhook` on the Vatar dashboard and set `VATAR_WEBHOOK_SECRET` (`vtr_whsec_test_…`), plus `VATAR_LIVE_WEBHOOK_SECRET` once approved.
 - `vercel.json` sends `Content-Security-Policy: frame-ancestors` for the Lagos Life and Naija Life domains instead of `X-Frame-Options`.
 
 ## Controls

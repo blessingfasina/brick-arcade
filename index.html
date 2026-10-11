@@ -61,9 +61,17 @@
         <p class="daily__tag">TODAY'S DAILY CHALLENGE</p>
         <p class="daily__name" data-daily-name>…</p>
         <p class="daily__meta"><span data-daily-best>NOT PLAYED YET TODAY</span><br><span data-daily-world hidden></span><br><span data-daily-clock></span> · SAME GAME FOR EVERYONE</p>
+        <button type="button" class="daily__more" data-archive-open hidden>PAST DAILIES</button>
       </div>
       <a class="daily__play" data-daily-link href="/">PLAY ▶</a>
     </section>
+
+    <div class="settings archive" data-archive hidden aria-label="Past daily challenges">
+      <div class="settings__row"><span>PAST DAILIES</span><button type="button" class="settings__buy" data-archive-buy hidden>UNLOCK</button></div>
+      <p class="archive__note" data-archive-note></p>
+      <ol class="archive__list" data-archive-list></ol>
+      <button type="button" class="settings__close" data-archive-close>DONE</button>
+    </div>
 
     <section class="shelf" aria-label="Games">
       <a class="hh" href="/snake" data-game="snake" style="--body:#7dff5a;--tilt:-2deg">

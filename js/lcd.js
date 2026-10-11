@@ -18,10 +18,16 @@ const PALETTES = {
   classic: { bg: '#9ead86', on: '#1f231d', off: 'rgba(31,35,29,0.10)' },
   contrast: { bg: '#eaf3d8', on: '#000000', off: 'rgba(0,0,0,0.07)' },
   neon: { bg: '#07020f', on: '#3ee9ff', off: 'rgba(62,233,255,0.09)' },
+  crt: { bg: '#140b02', on: '#ffb000', off: 'rgba(255,176,0,0.08)' },
 };
 const SKINS = ['grey', 'lime', 'orange', 'cyan', 'pink', 'yellow', 'purple', 'black'];
-// Sold as one pack inside Lagos Life (js/lagoslife.js); not offered on the open web.
+
+/* Extras sold inside Lagos Life (js/lagoslife.js, api/vatar.js). None are offered on the open web,
+   and none change gameplay or scores. The bundle counts as owning all four. */
+const PRODUCTS = { skins: 'console_pack', crt: 'crt_screen', outfits: 'mascot_outfits', archive: 'daily_archive', bundle: 'everything_bundle' };
+const owns = (product) => { const h = window.LagosLife; return !!(h && h.active && h.owns(product)); };
 const PREMIUM_SKINS = ['gold', 'chrome', 'jade'];
+const ARCHIVE_DAYS = 30;
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const fmt = (n) => Number(n).toLocaleString();
@@ -35,8 +41,20 @@ const store = {
 
 /* ---------- Daily challenge helpers (UTC day, same seed for everyone) ---------- */
 const dayKey = (d = new Date()) => d.toISOString().slice(0, 10);
-const dayNumber = () => Math.floor(Date.now() / 86400000);
-const dailyGame = () => GAMES[dayNumber() % GAMES.length];
+const dayNumber = (day) => Math.floor((day ? Date.parse(`${day}T00:00:00Z`) : Date.now()) / 86400000);
+const dailyGame = (day) => GAMES[dayNumber(day) % GAMES.length];
+const MONTHS = 'JAN FEB MAR APR MAY JUN JUL AUG SEP OCT NOV DEC'.split(' ');
+const WEEKDAYS = 'SUN MON TUE WED THU FRI SAT'.split(' ');
+const dayLabel = (day, weekday = false) => {
+  const d = new Date(`${day}T00:00:00Z`);
+  return `${weekday ? `${WEEKDAYS[d.getUTCDay()]} ` : ''}${String(d.getUTCDate()).padStart(2, '0')} ${MONTHS[d.getUTCMonth()]}`;
+};
+/* The daily challenges before today that the daily archive can replay, newest first. */
+const pastDailies = () => Array.from({ length: ARCHIVE_DAYS }, (_, i) => {
+  const d = new Date(); d.setUTCDate(d.getUTCDate() - i - 1);
+  const day = dayKey(d);
+  return { day, game: dailyGame(day) };
+});
 function hashSeed(str) {
   let h = 2166136261;
   for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
@@ -51,7 +69,7 @@ function mulberry32(a) {
   };
 }
 
-/* ---------- Screen renderer: Classic LCD, 3D Bricks (default) and Neon Arcade ----------
+/* ---------- Screen renderer: Classic LCD, 3D Bricks (default), Neon Arcade and Amber CRT ----------
    Games only switch cells on and off with set(x, y, code). Code 1 is the game's own colour,
    codes 2-9 pick a Neon colour. Classic and 3D draw every lit code the same way. */
 const NEON_COLORS = [null, null, '#ff3fa4', '#ffd400', '#3ee9ff', '#7dff5a', '#ff8a2a', '#b57bff', '#ff5a5a', '#eafcff'];
@@ -60,7 +78,8 @@ const REDUCE_MOTION = !!window.matchMedia?.('(prefers-reduced-motion: reduce)').
 const hexRgb = (h) => { h = h.replace('#', ''); if (h.length === 3) h = [...h].map((c) => c + c).join(''); const n = parseInt(h, 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
 const mix = (a, b, t) => { const A = hexRgb(a), B = hexRgb(b); return `rgb(${A.map((v, i) => Math.round(v + (B[i] - v) * t)).join(',')})`; };
 const rgba = (hex, a) => `rgba(${hexRgb(hex).join(',')},${a})`;
-const currentStyle = () => { const s = store.get('brick.style', '3d'); return STYLES.includes(s) ? s : '3d'; };
+// Amber CRT is a Lagos Life extra, so it only counts once the player owns it.
+const currentStyle = () => { const s = store.get('brick.style', '3d'); return STYLES.includes(s) || (s === 'crt' && owns(PRODUCTS.crt)) ? s : '3d'; };
 
 /* Blurred squares via shadowBlur (works in every browser, unlike ctx.filter). */
 function softSquare(size, inner, color, blur, alpha = 1) {
@@ -143,6 +162,7 @@ class LCD {
     const s = Math.max(2, Math.ceil(this.cell)); if (!this.cell) return;
     const pal = this.palette;
     if (this.style === 'classic') { this.sprites = { on: this.lcdSprite(pal.on), off: this.lcdSprite(pal.off) }; return; }
+    if (this.style === 'crt') { this.buildCRT(s); return; }
     if (this.style === 'neon') {
       const cols = NEON_COLORS.map((c, i) => (i === 1 ? this.base : c));
       this.sprites = {
@@ -194,6 +214,29 @@ class LCD {
     vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.2)'); b.fillStyle = vg; b.fillRect(0, 0, bg.width, bg.height);
     this.sprites = { top, shadow, bg, right: mix(on, '#000000', 0.45), bottom: mix(on, '#000000', 0.25), drop: rgba(on, 0.3) };
   }
+  /* Amber CRT: glowing phosphor dots, scanlines and a dark curved tube. */
+  buildCRT(s) {
+    const { bg: bgc, on: amber } = PALETTES.crt, W = this.canvas.width, H = this.canvas.height, cs = this.cell;
+    const core = document.createElement('canvas'); core.width = core.height = s;
+    const g = core.getContext('2d');
+    const rg = g.createRadialGradient(s / 2, s / 2, s * 0.04, s / 2, s / 2, s * 0.62);
+    rg.addColorStop(0, '#fff3c4'); rg.addColorStop(0.4, amber); rg.addColorStop(1, rgba(amber, 0.2));
+    const p = s * 0.12; g.fillStyle = rg; g.fillRect(p, p, s - 2 * p, s - 2 * p);
+    const glow = softSquare(s * 2.4, s * 0.9, amber, Math.max(2, s * 0.5), 0.5);
+    const bg = document.createElement('canvas'); bg.width = W; bg.height = H;
+    const b = bg.getContext('2d'); b.fillStyle = bgc; b.fillRect(0, 0, W, H);
+    b.fillStyle = PALETTES.crt.off; const q = cs * 0.14;
+    for (let i = 0; i < this.n; i++) b.fillRect((i % this.cols) * cs + q, ((i / this.cols) | 0) * cs + q, cs - 2 * q, cs - 2 * q);
+    const scan = document.createElement('canvas'); scan.width = W; scan.height = H;
+    const c = scan.getContext('2d'); c.fillStyle = 'rgba(0,0,0,0.28)';
+    const line = Math.max(1, Math.round(cs / 8));
+    for (let y = 0; y < H; y += line * 3) c.fillRect(0, y, W, line);
+    const vg = c.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.35, W / 2, H / 2, Math.max(W, H) * 0.72);
+    vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.6)'); c.fillStyle = vg; c.fillRect(0, 0, W, H);
+    const gl = c.createLinearGradient(0, 0, W * 0.6, H * 0.4); gl.addColorStop(0, 'rgba(255,240,210,0.07)'); gl.addColorStop(1, 'rgba(255,240,210,0)');
+    c.fillStyle = gl; c.fillRect(0, 0, W, H);
+    this.sprites = { core, glow, bg, scan };
+  }
   lcdSprite(color) {
     const s = this.cell; const c = document.createElement('canvas'); c.width = c.height = s; const g = c.getContext('2d');
     const p = Math.max(1, Math.round(s * 0.08)), t = Math.max(1, Math.round(s * 0.13)), i = Math.round(s * 0.33);
@@ -212,8 +255,9 @@ class LCD {
         v[i] += this.vel[i] * h;
         if (v[i] < 0) { v[i] = 0; this.vel[i] = 0; }
       }
-    } else if (this.style === 'neon' && this.animate) {
-      for (let i = 0; i < n; i++) v[i] = cells[i] ? 1 : Math.max(0, v[i] - dt / 0.3);
+    } else if ((this.style === 'neon' || this.style === 'crt') && this.animate) {
+      const fade = this.style === 'crt' ? 0.45 : 0.3; // CRT phosphor glows a little longer
+      for (let i = 0; i < n; i++) v[i] = cells[i] ? 1 : Math.max(0, v[i] - dt / fade);
     } else {
       for (let i = 0; i < n; i++) v[i] = cells[i] ? 1 : 0;
     }
@@ -235,10 +279,10 @@ class LCD {
     const g = this.ctx;
     g.setTransform(1, 0, 0, 1, 0, 0);
     if (this.style === 'classic') { this.drawClassic(g); return; }
-    g.fillStyle = this.style === 'neon' ? '#07020f' : this.palette.bg;
+    g.fillStyle = this.style === 'neon' ? '#07020f' : this.style === 'crt' ? PALETTES.crt.bg : this.palette.bg;
     g.fillRect(0, 0, this.canvas.width, this.canvas.height);
     if (this.shakeAmt > 0) { const a = this.shakeAmt * this.shakeAmt * this.cell * 0.45; g.translate((Math.random() - 0.5) * 2 * a, (Math.random() - 0.5) * 2 * a); }
-    if (this.style === '3d') this.draw3D(g); else this.drawNeon(g);
+    if (this.style === '3d') this.draw3D(g); else if (this.style === 'crt') this.drawCRT(g); else this.drawNeon(g);
   }
 
   drawClassic(g) {
@@ -283,6 +327,27 @@ class LCD {
     }
   }
 
+  drawCRT(g) {
+    const s = this.cell, sp = this.sprites, cols = this.cols;
+    const flick = REDUCE_MOTION ? 1 : 0.95 + Math.random() * 0.05;
+    g.drawImage(sp.bg, 0, 0);
+    g.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < this.n; i++) {
+      const v = this.v[i]; if (v < 0.02) continue;
+      const x = (i % cols) * s, y = ((i / cols) | 0) * s;
+      g.globalAlpha = v * 0.6 * flick; g.drawImage(sp.glow, x - s * 0.7, y - s * 0.7, s * 2.4, s * 2.4);
+      g.globalAlpha = v * flick; g.drawImage(sp.core, x, y, s, s);
+    }
+    for (const p of this.particles) {
+      g.globalAlpha = Math.max(0, Math.min(1, p.life / 0.5));
+      g.drawImage(sp.glow, p.x - s * 0.5, p.y - s * 0.5, s, s);
+    }
+    if (this.flashAmt > 0) { g.globalAlpha = this.flashAmt * 0.25; g.fillStyle = PALETTES.crt.on; g.fillRect(0, 0, this.canvas.width, this.canvas.height); }
+    g.globalAlpha = 1;
+    g.globalCompositeOperation = 'source-over';
+    g.drawImage(sp.scan, 0, 0);
+  }
+
   drawNeon(g) {
     const s = this.cell, sp = this.sprites, cols = this.cols;
     g.drawImage(sp.bg, 0, 0);
@@ -323,6 +388,13 @@ const MASCOT = {
   down:  ['............', '............', '............', '............', '............', '............',
           '..XXXX......', '.X....X.....', '.X.X.XXXXXX.', '.X..X.XXXX.X', '..XXXX...X.X', 'XXXXXXXXXXXX'],
 };
+/* Mascot outfits (a Lagos Life extra), drawn over the head: X lights a pixel, - clears one.
+   Anchored at the first pixel of the top of the head, dx columns across and dy rows down. */
+const OUTFITS = {
+  crown: { dx: -2, dy: 0, rows: ['X-X--X-X', 'XXXXXXXX'] },
+  cap: { dx: -1, dy: 0, rows: ['XXXXX', 'XXXXXXXX'] },
+  shades: { dx: -1, dy: 3, rows: ['XXXXXX'] },
+};
 class Mascot {
   constructor(canvas, palette) {
     this.canvas = canvas;
@@ -334,6 +406,7 @@ class Mascot {
     this.temp = null;
     this.until = 0;
     this.frame = null;
+    this.outfit = 'none';
     this.ghost = new Set();
     for (const f of Object.values(MASCOT)) f.forEach((row, y) => [...row].forEach((c, x) => { if (c === 'X') this.ghost.add(`${x},${y}`); }));
   }
@@ -350,15 +423,26 @@ class Mascot {
   update(t, speed) {
     const f = this.pick(t, speed);
     const pal = this.palette();
-    if (f === this.frame && pal === this.pal) return;
+    if (f === this.frame && pal === this.pal && this.outfit === this.drawn) return;
     this.frame = f;
     this.pal = pal;
+    this.drawn = this.outfit;
     const g = this.ctx, p = this.px;
     g.clearRect(0, 0, this.canvas.width, this.canvas.height);
     g.fillStyle = pal.off;
     for (const k of this.ghost) { const [x, y] = k.split(',').map(Number); g.fillRect(x * p, y * p, p - 1, p - 1); }
     g.fillStyle = pal.on;
     MASCOT[f].forEach((row, y) => [...row].forEach((c, x) => { if (c === 'X') g.fillRect(x * p, y * p, p - 1, p - 1); }));
+    const fit = OUTFITS[this.outfit];
+    if (!fit || f === 'down') return;
+    const rows = MASCOT[f], y0 = rows.findIndex((r) => r.includes('X')) + fit.dy, x0 = rows[y0 - fit.dy].indexOf('X') + fit.dx;
+    fit.rows.forEach((row, dy) => [...row].forEach((c, dx) => {
+      const x = x0 + dx, y = y0 + dy;
+      if (c === '.' || x < 0 || x > 11 || y > 11) return;
+      g.clearRect(x * p, y * p, p, p);
+      g.fillStyle = c === 'X' ? pal.on : pal.off;
+      g.fillRect(x * p, y * p, p - 1, p - 1);
+    }));
   }
 }
 
@@ -693,8 +777,12 @@ class Game {
     this.baseInterval = interval;
     this.interval = interval;
     this.console = document.querySelector('.console');
-    this.daily = new URLSearchParams(location.search).get('mode') === 'daily';
-    this.day = dayKey();
+    const q = new URLSearchParams(location.search);
+    this.daily = q.get('mode') === 'daily';
+    // Daily archive (Lagos Life extra): ?mode=daily&day=YYYY-MM-DD replays one of the last 30 dailies, unranked.
+    const past = this.daily && window.LagosLife ? pastDailies().find((d) => d.day === q.get('day') && d.game.id === id) : null;
+    this.archive = past ? past.day : null;
+    this.day = this.archive || dayKey();
     this.rng = this.daily ? mulberry32(hashSeed(`${this.day}:${id}`)) : null;
     this.hiKey = this.daily ? `brick.daily.${id}.${this.day}` : `brick.hi.${id}`;
     // Like the real handheld: pick a starting LEVEL and a SPEED before you press start.
@@ -728,7 +816,7 @@ class Game {
     this.input.on('up', (rep) => this.menu('level', rep));
     this.input.on('down', (rep) => this.menu('speed', rep));
     const mc = document.querySelector('.mascot');
-    this.mascot = mc ? new Mascot(mc, () => (this.lcd.style === 'neon' ? PALETTES.neon : this.lcd.palette)) : null;
+    this.mascot = mc ? new Mascot(mc, () => (this.lcd.style === 'neon' || this.lcd.style === 'crt' ? PALETTES[this.lcd.style] : this.lcd.palette)) : null;
     this.initTilt();
     document.querySelector('[data-mute]')?.addEventListener('click', () => this.toggleMute());
     this.overlay.addEventListener('click', (e) => {
@@ -736,6 +824,7 @@ class Game {
       else if (e.target.closest('[data-again]')) this.start();
       else if (e.target.closest('[data-join]')) { if (Leaderboard.askName()) this.postScore(); }
       else if (e.target.closest('[data-skip]')) { store.set('brick.nameAsked', '1'); this.showGameOver(); }
+      else if (e.target.closest('[data-buy]')) { const b = e.target.closest('[data-buy]'); this.buy(b.dataset.buy, b); }
     });
     this.overlay.addEventListener('submit', (e) => {
       if (!e.target.matches('[data-nameform]')) return;
@@ -754,7 +843,9 @@ class Game {
     });
 
     if (this.daily) {
-      document.querySelector('[data-mode]')?.removeAttribute('hidden');
+      const mode = document.querySelector('[data-mode]');
+      mode?.removeAttribute('hidden');
+      if (mode && this.archive) mode.textContent = `· ${dayLabel(this.archive)}`;
       document.title = `Daily challenge: ${document.title}`;
     }
     window.game = this;
@@ -804,6 +895,12 @@ class Game {
   showMenu() {
     this.mascot?.set('idle');
     this.setIcon('pause', false);
+    if (this.archive) {
+      const unlock = owns(PRODUCTS.archive) ? '<small class="press">PRESS START</small>'
+        : `<small>PART OF THE<br>DAILY ARCHIVE</small><div class="overlay__btns"><button type="button" data-buy="${PRODUCTS.archive}">UNLOCK</button></div>`;
+      this.showOverlay(`<div class="menu"><b>PAST<br>DAILY</b><small>${dayLabel(this.archive)} · LEVEL 1 · SPEED 1<br>PRACTICE, NOT RANKED</small>${unlock}</div>`, 'overlay--menu');
+      return;
+    }
     if (this.daily) {
       this.showOverlay(`<div class="menu"><b>DAILY<br>CHALLENGE</b><small>LEVEL 1 · SPEED 1<br>SAME GAME FOR EVERYONE</small><small class="press">PRESS START</small></div>`, 'overlay--menu');
       return;
@@ -830,6 +927,7 @@ class Game {
     else if (this.state === 'paused') this.resume();
   }
   start() {
+    if (this.archive && !owns(PRODUCTS.archive)) { this.showMenu(); return; }
     this.animToken++;
     this.score = 0;
     this.prevHi = this.hi;
@@ -885,11 +983,13 @@ class Game {
     if (this.hosted) {
       // Inside Lagos Life the player is signed in and sharing is blocked by the frame. The whole arcade
       // shares one Lagos Life board, so only the daily challenge (same game for everyone) goes on it.
-      if (this.daily) {
+      if (this.archive) {
+        this.showOverlay(`GAME OVER${this.scoreLine()}<small class="world">PRACTICE RUN<br>NOT RANKED</small><div class="overlay__btns"><a href="/${dailyGame().id}?mode=daily">TODAY</a><button type="button" data-again>AGAIN</button></div>`);
+      } else if (this.daily) {
         this.showOverlay(`GAME OVER${this.scoreLine()}<small class="world" data-world></small><div class="overlay__btns"><button type="button" data-again>AGAIN</button></div>`);
         if (this.score > 0) this.postHostScore();
       } else {
-        this.showOverlay(`GAME OVER${this.scoreLine()}<small class="world">PLAY THE DAILY TO RANK<br>ON LAGOS LIFE</small><div class="overlay__btns"><a class="overlay__btn" href="/${dailyGame().id}?mode=daily">DAILY</a><button type="button" data-again>AGAIN</button></div>`);
+        this.showOverlay(`GAME OVER${this.scoreLine()}<small class="world">PLAY THE DAILY TO RANK<br>ON LAGOS LIFE</small><div class="overlay__btns"><a href="/${dailyGame().id}?mode=daily">DAILY</a><button type="button" data-again>AGAIN</button></div>`);
       }
       return;
     }
@@ -933,31 +1033,47 @@ class Game {
     } catch (_) { if (slot) slot.textContent = ''; }
   }
 
-  /* --- Lagos Life: the whole arcade is one listing; pause/resume from the player, premium colour pack --- */
+  /* --- Lagos Life: the whole arcade is one listing; pause/resume from the player, extras to buy --- */
   get hosted() { return !!(this.host && this.host.active); }
   connectHost() {
     const host = this.host;
     host.on('pause', () => { if (this.state === 'playing') this.pause(); this.sound.ctx?.suspend(); });
     host.on('resume', () => { this.sound.ctx?.resume(); });
-    host.on('owned', () => { this.applySettings(); this.syncSettings(); });
+    host.on('owned', () => { this.applySettings(); this.syncSettings(); if (this.state === 'idle') this.showMenu(); });
     host.ready.then((h) => { this.syncSettings(); if (h) host.refresh().catch(() => {}); });
   }
-  ownsPack() { return !!(this.hosted && this.host.owned.has(this.host.pack)); }
-  async buyPack() {
-    const btn = document.querySelector('[data-buy]');
-    const say = (t) => { if (btn) btn.textContent = t; };
-    if (btn) btn.disabled = true;
-    say('OPENING…');
+  async buy(product, btn = document.querySelector(`#settings [data-buy="${product}"]`)) {
+    if (btn) { btn.dataset.label = btn.dataset.label || btn.textContent; btn.disabled = true; btn.textContent = 'OPENING…'; }
     try {
-      if (await this.host.buy()) { store.set('brick.skin', PREMIUM_SKINS[0]); this.applySettings(); this.sound.best(); }
-      say('UNLOCK');
+      if (await this.host.buy(product)) {
+        // Put the new thing on straight away.
+        const first = { [PRODUCTS.skins]: ['brick.skin', PREMIUM_SKINS[0]], [PRODUCTS.crt]: ['brick.style', 'crt'], [PRODUCTS.outfits]: ['brick.outfit', 'crown'] }[product];
+        if (first) store.set(...first);
+        this.sound.best();
+      }
+      if (btn) btn.textContent = btn.dataset.label;
     } catch (e) {
       const code = e && e.code;
-      say(code === 'cancelled' ? 'UNLOCK' : code === 'payment_failed' ? 'PAYMENT FAILED' : 'TRY AGAIN');
+      if (btn) btn.textContent = code === 'cancelled' ? btn.dataset.label : code === 'payment_failed' ? 'PAYMENT FAILED' : 'TRY AGAIN';
     } finally {
       if (btn) btn.disabled = false;
+      this.applySettings();
       this.syncSettings();
+      if (this.state === 'idle') this.showMenu();
     }
+  }
+  /* Settings rows for the extras, shown only inside Lagos Life. Locked items buy their pack when tapped. */
+  buildShop(panel) {
+    const unlock = (p) => `<button type="button" class="settings__buy" data-buy="${p}">UNLOCK</button>`;
+    const swatch = (sk) => `<button type="button" class="swatch swatch--${sk}" data-skin="${sk}" aria-label="${sk}"></button>`;
+    const outfit = (o) => `<button type="button" class="stylebtn" data-outfit="${o}" aria-pressed="false">${o.toUpperCase()}</button>`;
+    panel.querySelector('.swatches')?.closest('.settings__row')?.insertAdjacentHTML('afterend', [
+      `<div class="settings__row" data-shop hidden><span>PREMIUM COLOURS</span><div class="swatches">${PREMIUM_SKINS.map(swatch).join('')}${unlock(PRODUCTS.skins)}</div></div>`,
+      `<div class="settings__row" data-shop hidden><span>MASCOT OUTFIT</span><div class="stylebtns stylebtns--wrap">${['none', ...Object.keys(OUTFITS)].map(outfit).join('')}${unlock(PRODUCTS.outfits)}</div></div>`,
+      `<div class="settings__row" data-shop hidden><span>PAST DAILIES<small>REPLAY THE LAST ${ARCHIVE_DAYS}, UNRANKED</small></span>${unlock(PRODUCTS.archive)}<a class="settings__buy" href="/#archive" data-open-archive>OPEN</a></div>`,
+      `<div class="settings__row" data-shop data-bundle hidden><span>EVERYTHING BUNDLE<small>ALL FOUR EXTRAS IN ONE</small></span>${unlock(PRODUCTS.bundle)}</div>`,
+    ].join(''));
+    panel.querySelector('.stylebtns')?.insertAdjacentHTML('beforeend', '<button type="button" class="stylebtn" data-style="crt" data-shop hidden aria-pressed="false">CRT</button>');
   }
 
   addScore(n) {
@@ -995,23 +1111,21 @@ class Game {
     if (!panel || !open) { this.applySettings(); return; }
     const sw = panel.querySelector('.swatches');
     if (sw) sw.innerHTML = SKINS.map((s) => `<button type="button" class="swatch swatch--${s}" data-skin="${s}" aria-label="${s}"></button>`).join('');
-    if (sw && this.host) {
-      const row = document.createElement('div');
-      row.className = 'settings__row settings__row--premium';
-      row.dataset.premium = '';
-      row.hidden = true;
-      row.innerHTML = `<span>PREMIUM COLOURS</span><div class="swatches">${PREMIUM_SKINS.map((s) => `<button type="button" class="swatch swatch--${s}" data-skin="${s}" aria-label="${s}"></button>`).join('')}<button type="button" class="settings__buy" data-buy>UNLOCK</button></div>`;
-      sw.closest('.settings__row').after(row);
-    }
+    if (this.host) this.buildShop(panel);
     open.addEventListener('click', () => { panel.hidden = !panel.hidden; if (!panel.hidden && this.state === 'playing') this.pause(); this.syncSettings(); });
     panel.querySelector('[data-close]')?.addEventListener('click', () => { panel.hidden = true; });
     panel.addEventListener('click', (e) => {
       // Only the swatch and style buttons: the console element itself also carries data-skin.
-      if (e.target.closest('[data-buy]')) { this.buyPack(); return; }
+      const buy = e.target.closest('button[data-buy]');
+      if (buy) { this.buy(buy.dataset.buy, buy); return; }
       const s = e.target.closest('.swatch');
-      if (s && PREMIUM_SKINS.includes(s.dataset.skin) && !this.ownsPack()) { this.buyPack(); return; }
+      if (s && PREMIUM_SKINS.includes(s.dataset.skin) && !owns(PRODUCTS.skins)) { this.buy(PRODUCTS.skins); return; }
       if (s) { store.set('brick.skin', s.dataset.skin); this.applySettings(); this.syncSettings(); }
-      const st = e.target.closest('.stylebtn');
+      const o = e.target.closest('[data-outfit]');
+      if (o && o.dataset.outfit !== 'none' && !owns(PRODUCTS.outfits)) { this.buy(PRODUCTS.outfits); return; }
+      if (o) { store.set('brick.outfit', o.dataset.outfit); this.applySettings(); this.syncSettings(); this.sound.select(); }
+      const st = e.target.closest('.stylebtn[data-style]');
+      if (st && st.dataset.style === 'crt' && !owns(PRODUCTS.crt)) { this.buy(PRODUCTS.crt); return; }
       if (st) { store.set('brick.style', st.dataset.style); this.applySettings(); this.syncSettings(); this.lcd.flash(3); this.sound.select(); }
     });
     panel.addEventListener('input', (e) => {
@@ -1034,7 +1148,8 @@ class Game {
     const c = this.console;
     if (!c) return;
     const skin = store.get('brick.skin', 'grey');
-    c.dataset.skin = PREMIUM_SKINS.includes(skin) && !this.ownsPack() ? 'grey' : skin;
+    c.dataset.skin = PREMIUM_SKINS.includes(skin) && !owns(PRODUCTS.skins) ? 'grey' : skin;
+    if (this.mascot) this.mascot.outfit = owns(PRODUCTS.outfits) ? store.get('brick.outfit', 'none') : 'none';
     c.classList.toggle('console--big', store.get('brick.bigpad') === '1');
     const hc = store.get('brick.contrast') === '1';
     c.classList.toggle('console--hc', hc);
@@ -1053,17 +1168,23 @@ class Game {
     if (!panel) return;
     const skin = this.console ? this.console.dataset.skin : store.get('brick.skin', 'grey');
     panel.querySelectorAll('[data-skin]').forEach((b) => b.classList.toggle('is-on', b.dataset.skin === skin));
-    const premium = panel.querySelector('[data-premium]');
-    if (premium) {
-      const owns = this.ownsPack();
-      premium.hidden = !this.hosted;
-      premium.querySelectorAll('.swatch').forEach((b) => b.classList.toggle('is-locked', !owns));
-      const buy = premium.querySelector('[data-buy]');
-      if (buy) buy.hidden = owns;
+    if (this.host) {
+      const outfit = this.mascot ? this.mascot.outfit : 'none';
+      panel.querySelectorAll('[data-outfit]').forEach((b) => { const on = b.dataset.outfit === outfit; b.classList.toggle('is-on', on); b.setAttribute('aria-pressed', String(on)); });
+      const lock = (sel, product) => panel.querySelectorAll(sel).forEach((b) => b.classList.toggle('is-locked', !owns(product)));
+      lock('[data-shop] .swatch', PRODUCTS.skins);
+      lock('[data-style="crt"]', PRODUCTS.crt);
+      lock('[data-outfit]:not([data-outfit="none"])', PRODUCTS.outfits);
+      panel.querySelectorAll('[data-shop]').forEach((el) => { el.hidden = !this.hosted; });
+      panel.querySelectorAll('[data-buy]').forEach((b) => { b.hidden = owns(b.dataset.buy); });
+      const open = panel.querySelector('[data-open-archive]');
+      if (open) open.hidden = !owns(PRODUCTS.archive);
+      const bundle = panel.querySelector('[data-bundle]');
+      if (bundle) bundle.hidden = !this.hosted || [PRODUCTS.skins, PRODUCTS.crt, PRODUCTS.outfits, PRODUCTS.archive].every(owns);
     }
     const set = (k, v) => { const el = panel.querySelector(`[data-set="${k}"]`); if (el) el.checked = v; };
     const style = currentStyle();
-    panel.querySelectorAll('.stylebtn').forEach((b) => { const on = b.dataset.style === style; b.classList.toggle('is-on', on); b.setAttribute('aria-pressed', String(on)); });
+    panel.querySelectorAll('.stylebtn[data-style]').forEach((b) => { const on = b.dataset.style === style; b.classList.toggle('is-on', on); b.setAttribute('aria-pressed', String(on)); });
     const vol = panel.querySelector('[data-set="volume"]'); if (vol) vol.value = this.sound.volume;
     set('tilt', this.tiltWanted());
     set('bigpad', store.get('brick.bigpad') === '1');
@@ -1157,4 +1278,4 @@ if (canCache) {
   });
 }
 
-window.BrickArcade = { LCD, HUD, Input, Sound, Game, Stats, Leaderboard, GAMES, PALETTES, SKINS, STYLES, currentStyle, SITE, store, segSVG, sleep, fmt, dayKey, dayNumber, dailyGame, hashSeed, mulberry32 };
+window.BrickArcade = { LCD, HUD, Input, Sound, Game, Stats, Leaderboard, GAMES, PALETTES, SKINS, STYLES, currentStyle, SITE, store, segSVG, sleep, fmt, dayKey, dayNumber, dailyGame, dayLabel, pastDailies, hashSeed, mulberry32, PRODUCTS, owns };
